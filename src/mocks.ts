@@ -1644,3 +1644,300 @@ export async function buscarHistoricoOperador1_11(operadorId: string): Promise<T
     })
     .sort((a, b) => b.data.localeCompare(a.data));
 }
+
+// ── Tela 2.6 ──
+// Modelos (painel, perfil equipe). Mesmas versões do resto do protótipo: 1.1.3 (anterior, ainda no SA-0021),
+// 1.2.0 (em uso nos aparelhos da 2.5) e 1.3.0 (publicada para a unidade piloto; é a "disponível" da 1.16).
+// Publicar pede APROVACOES_NECESSARIAS_2_6 aprovações de pessoas diferentes da equipe; a 1ª abre o pedido.
+// Retirar não pede aprovação: avisa os aparelhos que usam a versão. Estado em memória (some ao recarregar).
+// O pacote enviado pela tela não sai do navegador: a tela só confere os nomes dos arquivos.
+export type EstadoVersao2_6 = "rascunho" | "validada" | "publicada" | "retirada";
+export type Alcance2_6 = "piloto" | "todas";
+
+export const APROVACOES_NECESSARIAS_2_6 = 2;
+// Mesma unidade da 1.13/1.16/1.17 (aparelho SA-0017).
+export const UNIDADE_PILOTO_2_6 = "UBS Jardim das Flores";
+export const ARQUIVOS_PACOTE_2_6 = [
+  "model.onnx",
+  "preprocess.json",
+  "threshold.json",
+  "metrics.json",
+  "manifest.sha256",
+  "card.md",
+] as const;
+
+// Avaliação offline no conjunto de teste do pacote (metrics.json). Proporções 0–1.
+export interface MetricasPacote2_6 {
+  conjunto_teste: string;
+  n_teste: number;
+  sensibilidade_maligna: number; // malignas com encaminhamento sugerido
+  falso_negativo_critico: number; // malignas com seguimento sugerido
+  especificidade: number; // não malignas sem encaminhamento sugerido
+  indeterminado: number;
+  auc: number;
+}
+
+export interface Aprovacao2_6 {
+  nome: string;
+  email: string;
+  em: string; // ISO
+}
+
+export interface VersaoModelo2_6 {
+  id: string; // = versao; a tela abre por ?versao=
+  nome: string;
+  versao: string;
+  estado: EstadoVersao2_6;
+  enviada_em: string; // ISO
+  alcance: Alcance2_6 | null; // publicada: onde está; retirada: onde estava; null = nunca publicada
+  publicada_em: string | null;
+  retirada_em: string | null;
+  pedido_alcance: Alcance2_6 | null; // publicação aguardando aprovações; null = nenhum pedido aberto
+  aprovacoes: Aprovacao2_6[]; // do pedido aberto; sem pedido, as da última publicação concluída
+  experimento: { id: string; registrado_em: string } | null;
+  card_md: string;
+  metricas: MetricasPacote2_6 | null; // null = metrics.json sem métricas registradas
+  aparelhos_em_uso: string[]; // calculado a partir dos aparelhos da 2.5
+}
+
+const OUTRA_PESSOA_EQUIPE_2_6 = { nome: "Lúcia Fernandes", email: "lucia.fernandes@exemplo.invalid" };
+const EQUIPE_SESSAO_2_6 = { nome: CONTAS_PAINEL[1].nome, email: CONTAS_PAINEL[1].email };
+const NOME_MODELO_2_6 = RESULTADO_PRIORITARIO_MOCK.modelo;
+const CONJUNTO_TESTE_2_6 = "Conjunto de teste separado do treino (exemplo, mock)";
+
+const card2_6 = (versao: string, dados: string, mudancas: string[]) =>
+  [
+    `# ${NOME_MODELO_2_6} ${versao}`,
+    "",
+    "## Uso pretendido",
+    "Triagem de lesões de pele em UBS, por profissionais não dermatologistas, para sugerir a prioridade de encaminhamento. A decisão de conduta permanece com o profissional de saúde.",
+    "",
+    "## Dados de treino",
+    dados,
+    "",
+    "## Mudanças",
+    ...mudancas.map((m) => `- ${m}`),
+    "",
+    "## Limitações",
+    ...LIMITACOES_MOCK.map((l) => `- ${l}`),
+  ].join("\n");
+
+const VERSOES_2_6: Omit<VersaoModelo2_6, "aparelhos_em_uso">[] = [
+  {
+    id: "1.5.0",
+    nome: NOME_MODELO_2_6,
+    versao: "1.5.0",
+    estado: "rascunho",
+    enviada_em: "2026-11-09T11:00:00",
+    alcance: null,
+    publicada_em: null,
+    retirada_em: null,
+    pedido_alcance: null,
+    aprovacoes: [],
+    experimento: null,
+    card_md: card2_6("1.5.0", "Dataset de exemplo (mock); treino em andamento.", [
+      "Nova arquitetura em teste.",
+      "Avaliação no conjunto de teste ainda não feita.",
+    ]),
+    metricas: null,
+  },
+  {
+    id: "1.4.0",
+    nome: NOME_MODELO_2_6,
+    versao: "1.4.0",
+    estado: "validada",
+    enviada_em: "2026-11-03T15:30:00",
+    alcance: null,
+    publicada_em: null,
+    retirada_em: null,
+    pedido_alcance: "piloto",
+    aprovacoes: [{ ...OUTRA_PESSOA_EQUIPE_2_6, em: "2026-11-09T16:40:00" }],
+    experimento: { id: "EXP-0031", registrado_em: "2026-11-05T10:00:00" },
+    card_md: card2_6("1.4.0", "Dataset de exemplo (mock), o mesmo da 1.3.0.", [
+      "Ajuste no pré-processamento de iluminação do dermatoscópio.",
+      "Mesmas classes e mesmo limiar de encaminhamento da 1.3.0.",
+    ]),
+    metricas: {
+      conjunto_teste: CONJUNTO_TESTE_2_6,
+      n_teste: 2100,
+      sensibilidade_maligna: 0.91,
+      falso_negativo_critico: 0.03,
+      especificidade: 0.75,
+      indeterminado: 0.08,
+      auc: 0.92,
+    },
+  },
+  {
+    id: "1.3.0",
+    nome: NOME_MODELO_2_6,
+    versao: "1.3.0",
+    estado: "publicada",
+    enviada_em: "2026-10-20T09:00:00",
+    alcance: "piloto",
+    publicada_em: "2026-11-05T14:00:00",
+    retirada_em: null,
+    pedido_alcance: null,
+    aprovacoes: [
+      { ...OUTRA_PESSOA_EQUIPE_2_6, em: "2026-11-04T17:10:00" },
+      { ...EQUIPE_SESSAO_2_6, em: "2026-11-05T14:00:00" },
+    ],
+    experimento: { id: "EXP-0027", registrado_em: "2026-10-22T11:30:00" },
+    card_md: card2_6("1.3.0", "Dataset de exemplo (mock), com mais imagens de peles com fototipos IV a VI.", [
+      "Retreinado com mais imagens de peles com fototipos IV a VI.",
+      "Mesmas classes e mesmas condutas sugeridas da 1.2.0.",
+      "Análise mais rápida no aparelho.",
+    ]),
+    metricas: {
+      conjunto_teste: CONJUNTO_TESTE_2_6,
+      n_teste: 2100,
+      sensibilidade_maligna: 0.9,
+      falso_negativo_critico: 0.035,
+      especificidade: 0.74,
+      indeterminado: 0.08,
+      auc: 0.91,
+    },
+  },
+  {
+    id: "1.2.1",
+    nome: NOME_MODELO_2_6,
+    versao: "1.2.1",
+    estado: "retirada",
+    enviada_em: "2026-10-06T10:00:00",
+    alcance: "piloto",
+    publicada_em: "2026-10-08T15:00:00",
+    retirada_em: "2026-10-10T09:20:00",
+    pedido_alcance: null,
+    aprovacoes: [
+      { ...EQUIPE_SESSAO_2_6, em: "2026-10-07T18:00:00" },
+      { ...OUTRA_PESSOA_EQUIPE_2_6, em: "2026-10-08T15:00:00" },
+    ],
+    experimento: { id: "EXP-0024", registrado_em: "2026-10-06T16:00:00" },
+    card_md: card2_6("1.2.1", "Dataset de exemplo (mock), o mesmo da 1.2.0.", [
+      "Correção no arredondamento do limiar de encaminhamento.",
+    ]),
+    metricas: {
+      conjunto_teste: CONJUNTO_TESTE_2_6,
+      n_teste: 1500,
+      sensibilidade_maligna: 0.88,
+      falso_negativo_critico: 0.04,
+      especificidade: 0.74,
+      indeterminado: 0.09,
+      auc: 0.9,
+    },
+  },
+  {
+    id: "1.2.0",
+    nome: NOME_MODELO_2_6,
+    versao: "1.2.0",
+    estado: "publicada",
+    enviada_em: "2026-09-15T09:00:00",
+    alcance: "todas",
+    publicada_em: "2026-09-29T16:00:00",
+    retirada_em: null,
+    pedido_alcance: null,
+    aprovacoes: [
+      { ...OUTRA_PESSOA_EQUIPE_2_6, em: "2026-09-26T11:00:00" },
+      { ...EQUIPE_SESSAO_2_6, em: "2026-09-29T16:00:00" },
+    ],
+    experimento: { id: "EXP-0019", registrado_em: "2026-09-17T14:00:00" },
+    card_md: card2_6("1.2.0", "Dataset de exemplo (mock).", [
+      "Nova classe de ceratose seborreica e similares.",
+      "Limiar de encaminhamento revisado com a equipe clínica.",
+    ]),
+    metricas: {
+      conjunto_teste: CONJUNTO_TESTE_2_6,
+      n_teste: 1500,
+      sensibilidade_maligna: 0.89,
+      falso_negativo_critico: 0.04,
+      especificidade: 0.73,
+      indeterminado: 0.09,
+      auc: 0.9,
+    },
+  },
+  {
+    id: "1.1.3",
+    nome: NOME_MODELO_2_6,
+    versao: "1.1.3",
+    estado: "publicada",
+    enviada_em: "2026-03-10T09:00:00",
+    alcance: "todas",
+    publicada_em: "2026-04-02T10:00:00",
+    retirada_em: null,
+    pedido_alcance: null,
+    aprovacoes: [
+      { ...EQUIPE_SESSAO_2_6, em: "2026-03-30T15:00:00" },
+      { ...OUTRA_PESSOA_EQUIPE_2_6, em: "2026-04-02T10:00:00" },
+    ],
+    experimento: { id: "EXP-0008", registrado_em: "2026-03-12T10:00:00" },
+    card_md: card2_6("1.1.3", "Dataset de exemplo (mock).", ["Primeira versão entregue às unidades."]),
+    metricas: {
+      conjunto_teste: CONJUNTO_TESTE_2_6,
+      n_teste: 1200,
+      sensibilidade_maligna: 0.86,
+      falso_negativo_critico: 0.05,
+      especificidade: 0.71,
+      indeterminado: 0.1,
+      auc: 0.88,
+    },
+  },
+];
+
+const agoraIso2_6 = () => {
+  const d = new Date();
+  return `${HOJE_MOCK}T${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}:00`;
+};
+
+const copiarVersao2_6 = (v: Omit<VersaoModelo2_6, "aparelhos_em_uso">): VersaoModelo2_6 => ({
+  ...v,
+  aprovacoes: v.aprovacoes.map((a) => ({ ...a })),
+  experimento: v.experimento && { ...v.experimento },
+  metricas: v.metricas && { ...v.metricas },
+  aparelhos_em_uso: APARELHOS_2_5.filter((a) => a.modelo_versao === v.versao).map((a) => a.id),
+});
+
+const acharVersao2_6 = (id: string) => {
+  const v = VERSOES_2_6.find((x) => x.id === id);
+  if (!v) throw new Error(`Versão ${id} não encontrada`);
+  return v;
+};
+
+// Mais recente primeiro.
+export function buscarVersoesModelo2_6(): Promise<VersaoModelo2_6[]> {
+  return esperar(VERSOES_2_6.map(copiarVersao2_6));
+}
+
+// Registra a aprovação de quem está no painel. Com APROVACOES_NECESSARIAS_2_6, a versão é publicada.
+export function aprovarPublicacao2_6(
+  id: string,
+  alcance: Alcance2_6,
+  quem: { nome: string; email: string },
+): Promise<VersaoModelo2_6> {
+  const v = acharVersao2_6(id);
+  if (!v.experimento) throw new Error(`Versão ${id} sem experimento registrado`);
+  const publicavel = v.estado === "validada" || (v.estado === "publicada" && v.alcance === "piloto");
+  if (!publicavel) throw new Error(`Versão ${id} não pode ser publicada no estado ${v.estado}`);
+  if (v.pedido_alcance && v.pedido_alcance !== alcance) throw new Error(`Pedido aberto da ${id} é para outro alcance`);
+  if (!v.pedido_alcance) {
+    v.pedido_alcance = alcance;
+    v.aprovacoes = [];
+  }
+  if (v.aprovacoes.some((a) => a.email === quem.email)) throw new Error(`${quem.email} já aprovou a ${id}`);
+  const em = agoraIso2_6();
+  v.aprovacoes.push({ nome: quem.nome, email: quem.email, em });
+  if (v.aprovacoes.length >= APROVACOES_NECESSARIAS_2_6) {
+    v.estado = "publicada";
+    v.alcance = alcance;
+    v.publicada_em = em;
+    v.pedido_alcance = null;
+  }
+  return esperar(copiarVersao2_6(v));
+}
+
+export function retirarVersao2_6(id: string): Promise<VersaoModelo2_6> {
+  const v = acharVersao2_6(id);
+  if (v.estado !== "publicada") throw new Error(`Versão ${id} não está publicada`);
+  v.estado = "retirada";
+  v.retirada_em = agoraIso2_6();
+  v.pedido_alcance = null;
+  return esperar(copiarVersao2_6(v));
+}
