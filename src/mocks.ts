@@ -740,3 +740,132 @@ export function analisarImagem1_7(dados: { local: string; imagemUrl: string }): 
     analiseLenta1_7 ? TEMPOS.predictTimeoutMs + ANALISE_DURACAO_MS_1_7 : ANALISE_DURACAO_MS_1_7,
   );
 }
+
+// ── Tela 1.15 ──
+// Histórico da unidade (admin): todas as triagens do aparelho, de todos os operadores.
+// O "servidor" junta TRIAGENS_MOCK (inclusive as acrescentadas em tempo de execução) com
+// triagens mais antigas da mesma unidade, nome do operador, capturas, decisão do profissional
+// e anulação. Os códigos A-0341, A-0358 e A-0395 batem com os casos da 2.2 (UBS Jardim das Flores).
+// Variações pela URL: ?historico-unidade=vazio (nenhum registro)
+export const cenarioHistoricoUnidade1_15: "normal" | "vazio" =
+  new URLSearchParams(window.location.search).get("historico-unidade") === "vazio" ? "vazio" : "normal";
+
+export type MotivoAnulacao1_15 = "codigo_errado" | "triagem_de_teste" | "outro_paciente";
+
+export const MOTIVOS_ANULACAO_1_15: { valor: MotivoAnulacao1_15; rotulo: string }[] = [
+  { valor: "codigo_errado", rotulo: "Código errado" },
+  { valor: "triagem_de_teste", rotulo: "Triagem de teste" },
+  { valor: "outro_paciente", rotulo: "Outro paciente" },
+];
+
+export type DecisaoProfissional1_15 = Exclude<Conduta, "indeterminado">;
+
+export interface Anulacao1_15 {
+  motivo: MotivoAnulacao1_15;
+  por: string; // nome do administrador
+  em: string; // ISO
+}
+
+export interface TriagemUnidade1_15 extends Triagem {
+  operador_nome: string;
+  operador_ativo: boolean;
+  // null = o aparelho não registrou as tentativas desta triagem
+  capturas: { feitas: number; reprovadas: number } | null;
+  decisao_profissional: DecisaoProfissional1_15 | null; // null = sem decisão registrada
+  anulacao: Anulacao1_15 | null;
+}
+
+export type RespostaAnular1_15 =
+  | { status: "ok" }
+  | { status: "incorreto"; restantes: number }
+  | { status: "pausado"; minutos: number };
+
+export const CODIGO_PIN_PAUSADO_1_15 = "ADM-PIN-PAUSA";
+
+// Usuários que já não estão em USUARIOS (desativados ou fora do login padrão).
+const OPERADORES_EXTRAS_1_15: Usuario[] = [
+  { id: "u-4", nome: "Paulo Lima", funcao: "tecnico_enfermagem", perfil: "operador", ativo: true },
+  { id: "u-5", nome: "Carla Mendes", funcao: "tecnico_enfermagem", perfil: "operador", ativo: false },
+];
+
+const resultado1_15 = (conduta: Conduta, risco: Risco | null, modelo_versao = "1.2.0"): Resultado => ({
+  ...RESULTADO_PRIORITARIO_MOCK,
+  conduta,
+  risco,
+  modelo_versao,
+});
+
+const TRIAGENS_ANTERIORES_1_15: Triagem[] = [
+  { id: "t-0341", codigo: "A-0341", data: "2026-10-30T14:15:00", operador_id: "u-2", local: "Pescoço", resultado: resultado1_15("encaminhar_eletivo", "moderado", "1.1.3"), sync: "enviado" },
+  { id: "t-0352", codigo: "A-0352", data: "2026-11-01T09:20:00", operador_id: "u-5", local: "Perna direita", resultado: resultado1_15("seguimento", "baixo", "1.1.3"), sync: "enviado" },
+  { id: "t-0358", codigo: "A-0358", data: "2026-11-02T08:50:00", operador_id: "u-2", local: "Perna esquerda", resultado: resultado1_15("encaminhar_eletivo", "moderado", "1.1.3"), sync: "enviado" },
+  { id: "t-0363", codigo: "A-0363", data: "2026-11-03T11:30:00", operador_id: "u-1", local: "Mão esquerda", resultado: resultado1_15("indeterminado", null), sync: "enviado" },
+  { id: "t-0370", codigo: "A-0370", data: "2026-11-04T10:10:00", operador_id: "u-5", local: "Face", resultado: null, sync: "enviado" },
+  { id: "t-0374", codigo: "A-0374", data: "2026-11-04T15:40:00", operador_id: "u-2", local: "Dorso", resultado: resultado1_15("seguimento", "baixo"), sync: "enviado" },
+  { id: "t-0381", codigo: "A-0381", data: "2026-11-05T09:05:00", operador_id: "u-1", local: "Tórax", resultado: resultado1_15("encaminhar_prioritario", "alto"), sync: "enviado" },
+  { id: "t-0388", codigo: "A-0388", data: "2026-11-05T14:25:00", operador_id: "u-1", local: "Abdome", resultado: resultado1_15("seguimento", "baixo"), sync: "enviado" },
+  { id: "t-0395", codigo: "A-0395", data: "2026-11-06T13:45:00", operador_id: "u-1", local: "Braço esquerdo", resultado: resultado1_15("encaminhar_eletivo", "moderado"), sync: "enviado" },
+  { id: "t-0399", codigo: "A-0399", data: "2026-11-07T08:40:00", operador_id: "u-2", local: "Couro cabeludo", resultado: resultado1_15("encaminhar_eletivo", "moderado"), sync: "enviado" },
+  { id: "t-0404", codigo: "A-0404", data: "2026-11-08T10:50:00", operador_id: "u-2", local: "Orelha direita", resultado: resultado1_15("seguimento", "baixo"), sync: "enviado" },
+  { id: "t-0407", codigo: "A-0407", data: "2026-11-09T16:15:00", operador_id: "u-1", local: "Ombro esquerdo", resultado: resultado1_15("encaminhar_prioritario", "alto"), sync: "enviado" },
+];
+
+// Por id de triagem. Triagens criadas em tempo de execução (1.6, 1.7) ainda não têm estes dados.
+const REGISTROS_1_15: Record<string, { capturas: { feitas: number; reprovadas: number }; decisao: DecisaoProfissional1_15 | null }> = {
+  "t-0341": { capturas: { feitas: 1, reprovadas: 0 }, decisao: null },
+  "t-0352": { capturas: { feitas: 2, reprovadas: 1 }, decisao: "seguimento" },
+  "t-0358": { capturas: { feitas: 1, reprovadas: 0 }, decisao: "encaminhar_eletivo" },
+  "t-0363": { capturas: { feitas: 3, reprovadas: 2 }, decisao: "encaminhar_eletivo" },
+  "t-0370": { capturas: { feitas: 3, reprovadas: 3 }, decisao: null },
+  "t-0374": { capturas: { feitas: 1, reprovadas: 0 }, decisao: null },
+  "t-0381": { capturas: { feitas: 1, reprovadas: 0 }, decisao: "encaminhar_prioritario" },
+  "t-0388": { capturas: { feitas: 2, reprovadas: 1 }, decisao: "encaminhar_eletivo" },
+  "t-0395": { capturas: { feitas: 1, reprovadas: 0 }, decisao: "encaminhar_prioritario" },
+  "t-0399": { capturas: { feitas: 2, reprovadas: 1 }, decisao: "encaminhar_eletivo" },
+  "t-0404": { capturas: { feitas: 1, reprovadas: 0 }, decisao: "seguimento" },
+  "t-0407": { capturas: { feitas: 1, reprovadas: 0 }, decisao: "encaminhar_prioritario" },
+  "t-0412": { capturas: { feitas: 1, reprovadas: 0 }, decisao: "encaminhar_prioritario" },
+  "t-0418": { capturas: { feitas: 2, reprovadas: 1 }, decisao: "seguimento" },
+  "t-0421": { capturas: { feitas: 1, reprovadas: 0 }, decisao: null },
+  "t-0423": { capturas: { feitas: 3, reprovadas: 3 }, decisao: null },
+};
+
+// Anulações no "servidor" em memória: somem ao recarregar. A-0374 já vem anulada para mostrar o estado.
+const anulacoes1_15 = new Map<string, Anulacao1_15>([
+  ["t-0374", { motivo: "triagem_de_teste", por: "Joana Costa", em: "2026-11-04T16:02:00" }],
+]);
+
+export function buscarTriagensUnidade1_15(): Promise<TriagemUnidade1_15[]> {
+  if (cenarioHistoricoUnidade1_15 === "vazio") return esperar([]);
+  const usuarios = [...USUARIOS, ...OPERADORES_EXTRAS_1_15];
+  return esperar(
+    [...TRIAGENS_ANTERIORES_1_15, ...TRIAGENS_MOCK].map((t) => {
+      const u = usuarios.find((x) => x.id === t.operador_id);
+      const r = REGISTROS_1_15[t.id];
+      return {
+        ...t,
+        operador_nome: u?.nome ?? "Operador não identificado",
+        operador_ativo: u?.ativo ?? false,
+        capturas: r ? { ...r.capturas } : null,
+        decisao_profissional: r?.decisao ?? null,
+        anulacao: anulacoes1_15.get(t.id) ?? null,
+      };
+    }),
+  );
+}
+
+// Confere o PIN do administrador (mesma regra de tentativas e pausa do login) e anula o registro.
+export async function anularTriagem1_15(dados: {
+  triagemId: string;
+  motivo: MotivoAnulacao1_15;
+  adminId: string;
+  adminNome: string;
+  pin: string;
+}): Promise<RespostaAnular1_15> {
+  const r = await verificarPin(dados.adminId, dados.pin);
+  if (r.status !== "ok") return r;
+  const agora = new Date();
+  const hora = `${String(agora.getHours()).padStart(2, "0")}:${String(agora.getMinutes()).padStart(2, "0")}`;
+  anulacoes1_15.set(dados.triagemId, { motivo: dados.motivo, por: dados.adminNome, em: `${HOJE_MOCK}T${hora}:00` });
+  return { status: "ok" };
+}
