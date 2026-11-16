@@ -1007,3 +1007,242 @@ export async function instalarModelo1_16(
   }
   return { status: "ok", versao: { nome: alvo.nome, versao: alvo.versao } };
 }
+
+// ── Tela 2.4 ──
+// Métricas do painel (perfil equipe). Números simulados, um conjunto por período; a tela avisa isso no topo.
+// O "servidor" calcula proporção e IC95 (Wilson) a partir das contagens e não estima abaixo de N_MINIMO_ESTIMATIVA_2_4.
+export type PeriodoDias2_4 = 7 | 30 | 90 | 365;
+export const PERIODOS_DIAS_2_4: PeriodoDias2_4[] = [7, 30, 90, 365];
+export const PERIODO_PADRAO_2_4: PeriodoDias2_4 = 30;
+export const N_MINIMO_ESTIMATIVA_2_4 = 10;
+// PSI abaixo de "atencao" = estável; entre os dois = atenção; a partir de "investigar" = investigar.
+export const LIMIARES_PSI_2_4 = { atencao: 0.1, investigar: 0.25 } as const;
+
+export type Estimativa2_4 =
+  | { n: number; suficiente: true; valor: number; ic95: [number, number] }
+  | { n: number; suficiente: false };
+
+const Z95_2_4 = 1.96;
+
+const proporcao2_4 = (x: number, n: number): Estimativa2_4 => {
+  if (n < N_MINIMO_ESTIMATIVA_2_4) return { n, suficiente: false };
+  const p = x / n;
+  const z2 = Z95_2_4 ** 2;
+  const centro = (p + z2 / (2 * n)) / (1 + z2 / n);
+  const margem = (Z95_2_4 / (1 + z2 / n)) * Math.sqrt((p * (1 - p)) / n + z2 / (4 * n * n));
+  return { n, suficiente: true, valor: p, ic95: [Math.max(0, centro - margem), Math.min(1, centro + margem)] };
+};
+
+// PSI não é proporção: valor e IC95 (bootstrap) chegam prontos do "servidor".
+const indice2_4 = (valor: number, ic95: [number, number], n: number): Estimativa2_4 =>
+  n < N_MINIMO_ESTIMATIVA_2_4 ? { n, suficiente: false } : { n, suficiente: true, valor, ic95 };
+
+export type ClasseHisto2_4 = "mel" | "bcc" | "cec" | "nv" | "bkl" | "df";
+
+export const CLASSES_HISTO_2_4: { rotulo: ClasseHisto2_4; nome: string; maligna: boolean }[] = [
+  { rotulo: "mel", nome: "Melanoma", maligna: true },
+  { rotulo: "bcc", nome: "Carcinoma basocelular", maligna: true },
+  { rotulo: "cec", nome: "Carcinoma espinocelular", maligna: true },
+  { rotulo: "nv", nome: "Nevo melanocítico", maligna: false },
+  { rotulo: "bkl", nome: "Ceratose seborreica e similares", maligna: false },
+  { rotulo: "df", nome: "Dermatofibroma", maligna: false },
+];
+
+// Colunas da matriz de confusão = conduta sugerida, nesta ordem.
+export const CONDUTAS_MATRIZ_2_4: Conduta[] = ["encaminhar_prioritario", "encaminhar_eletivo", "seguimento", "indeterminado"];
+
+export interface LinhaMatriz2_4 {
+  rotulo: ClasseHisto2_4;
+  nome: string;
+  maligna: boolean;
+  contagens: Record<Conduta, number>;
+  n: number;
+}
+
+export interface PorClasse2_4 {
+  rotulo: ClasseHisto2_4;
+  nome: string;
+  maligna: boolean;
+  encaminhamento: Estimativa2_4; // prioritário + eletivo sugeridos / casos da classe
+}
+
+export interface AlertaDrift2_4 {
+  id: string;
+  desde: string; // ISO
+  metrica: string;
+  escopo: string;
+  estimativa: Estimativa2_4;
+  limiar: number;
+  formato: "proporcao" | "indice";
+  aparelho: string | null; // abre a 2.5 quando o gatilho é de um aparelho
+}
+
+export interface PartesPonta2_4 {
+  concordante: number;
+  ponta_maior: number; // profissional da ponta escolheu prioridade maior que a sugerida
+  ponta_menor: number;
+}
+
+export interface Metricas2_4 {
+  dias: PeriodoDias2_4;
+  inicio: string; // aaaa-mm-dd
+  fim: string; // aaaa-mm-dd
+  atualizado_em: string; // ISO
+  modelo_versoes: string[];
+  desempenho: {
+    n_com_desfecho: number;
+    sensibilidade_maligna: Estimativa2_4; // malignas no histopatológico com encaminhamento sugerido
+    falso_negativo_critico: Estimativa2_4; // malignas no histopatológico com seguimento sugerido
+    matriz: LinhaMatriz2_4[];
+  };
+  por_classe: PorClasse2_4[];
+  sinais: {
+    encaminhamento: Estimativa2_4;
+    indeterminado: Estimativa2_4;
+    captura_reprovada: Estimativa2_4;
+    psi: Estimativa2_4;
+  };
+  concordancia: {
+    ponta: Estimativa2_4;
+    ponta_partes: PartesPonta2_4;
+    especialista: Estimativa2_4;
+    especialista_partes: Record<ConcordanciaPrioridade2_3, number>;
+  };
+  alertas: AlertaDrift2_4[];
+}
+
+interface Base2_4 {
+  inicio: string;
+  modelo_versoes: string[];
+  matriz: Record<ClasseHisto2_4, [prioritario: number, eletivo: number, seguimento: number, indeterminado: number]>;
+  triagens: number;
+  encaminhadas: number;
+  indeterminadas: number;
+  capturas: number;
+  reprovadas: number;
+  psi: { valor: number; ic95: [number, number] };
+  ponta: PartesPonta2_4;
+  especialista: Record<ConcordanciaPrioridade2_3, number>;
+  alertas: AlertaDrift2_4[];
+}
+
+const ATUALIZADO_EM_2_4 = `${HOJE_MOCK}T06:00:00`;
+
+const BASES_2_4: Record<PeriodoDias2_4, Base2_4> = {
+  7: {
+    inicio: "2026-11-04",
+    modelo_versoes: ["1.2.0"],
+    matriz: { mel: [1, 0, 0, 1], bcc: [1, 1, 0, 0], cec: [0, 0, 0, 0], nv: [0, 2, 3, 0], bkl: [0, 1, 1, 0], df: [0, 0, 0, 0] },
+    triagens: 91,
+    encaminhadas: 33,
+    indeterminadas: 9,
+    capturas: 108,
+    reprovadas: 17,
+    psi: { valor: 0.19, ic95: [0.07, 0.34] },
+    ponta: { concordante: 63, ponta_maior: 3, ponta_menor: 5 },
+    especialista: { adequada: 15, deveria_ser_maior: 2, deveria_ser_menor: 2 },
+    alertas: [
+      { id: "d-cap-sa0009-7", desde: "2026-11-05T06:00:00", metrica: "Captura reprovada", escopo: "UBS Vila Nova · aparelho SA-0009", estimativa: proporcao2_4(8, 30), limiar: 0.2, formato: "proporcao", aparelho: "SA-0009" },
+    ],
+  },
+  30: {
+    inicio: "2026-10-12",
+    modelo_versoes: ["1.2.0"],
+    matriz: { mel: [8, 2, 0, 1], bcc: [3, 4, 1, 1], cec: [1, 2, 0, 0], nv: [2, 5, 13, 2], bkl: [1, 3, 6, 1], df: [0, 1, 1, 0] },
+    triagens: 402,
+    encaminhadas: 139,
+    indeterminadas: 37,
+    capturas: 471,
+    reprovadas: 69,
+    psi: { valor: 0.14, ic95: [0.08, 0.21] },
+    ponta: { concordante: 271, ponta_maior: 20, ponta_menor: 31 },
+    especialista: { adequada: 77, deveria_ser_maior: 7, deveria_ser_menor: 12 },
+    alertas: [
+      { id: "d-psi-30", desde: "2026-11-06T06:00:00", metrica: "PSI da probabilidade de malignidade", escopo: "Todas as unidades", estimativa: indice2_4(0.14, [0.08, 0.21], 402), limiar: 0.1, formato: "indice", aparelho: null },
+      { id: "d-cap-sa0009-30", desde: "2026-11-05T06:00:00", metrica: "Captura reprovada", escopo: "UBS Vila Nova · aparelho SA-0009", estimativa: proporcao2_4(31, 129), limiar: 0.2, formato: "proporcao", aparelho: "SA-0009" },
+    ],
+  },
+  90: {
+    inicio: "2026-08-13",
+    modelo_versoes: ["1.1.3", "1.2.0"],
+    matriz: { mel: [15, 4, 1, 2], bcc: [8, 13, 2, 2], cec: [3, 4, 1, 1], nv: [6, 15, 38, 5], bkl: [2, 10, 18, 4], df: [0, 2, 4, 1] },
+    triagens: 1215,
+    encaminhadas: 413,
+    indeterminadas: 104,
+    capturas: 1420,
+    reprovadas: 205,
+    psi: { valor: 0.09, ic95: [0.06, 0.13] },
+    ponta: { concordante: 851, ponta_maior: 58, ponta_menor: 78 },
+    especialista: { adequada: 233, deveria_ser_maior: 21, deveria_ser_menor: 33 },
+    alertas: [
+      { id: "d-ind-sa0004-90", desde: "2026-09-22T06:00:00", metrica: "Indeterminado", escopo: "UBS Centro · aparelho SA-0004", estimativa: proporcao2_4(58, 387), limiar: 0.12, formato: "proporcao", aparelho: "SA-0004" },
+    ],
+  },
+  365: {
+    inicio: "2025-11-11",
+    modelo_versoes: ["1.1.3", "1.2.0"],
+    matriz: { mel: [58, 14, 3, 6], bcc: [31, 52, 6, 7], cec: [12, 15, 2, 3], nv: [22, 61, 148, 19], bkl: [9, 38, 71, 14], df: [1, 6, 15, 3] },
+    triagens: 4820,
+    encaminhadas: 1590,
+    indeterminadas: 386,
+    capturas: 5610,
+    reprovadas: 790,
+    psi: { valor: 0.06, ic95: [0.04, 0.08] },
+    ponta: { concordante: 3402, ponta_maior: 214, ponta_menor: 294 },
+    especialista: { adequada: 902, deveria_ser_maior: 71, deveria_ser_menor: 131 },
+    alertas: [],
+  },
+};
+
+const montarMetricas2_4 = (dias: PeriodoDias2_4): Metricas2_4 => {
+  const b = BASES_2_4[dias];
+  const matriz: LinhaMatriz2_4[] = CLASSES_HISTO_2_4.map((c) => {
+    const [p, e, s, i] = b.matriz[c.rotulo];
+    return {
+      ...c,
+      contagens: { encaminhar_prioritario: p, encaminhar_eletivo: e, seguimento: s, indeterminado: i },
+      n: p + e + s + i,
+    };
+  });
+  const malignas = matriz.filter((l) => l.maligna);
+  const nMalignas = malignas.reduce((t, l) => t + l.n, 0);
+  const encaminhadasMalignas = malignas.reduce((t, l) => t + l.contagens.encaminhar_prioritario + l.contagens.encaminhar_eletivo, 0);
+  const seguimentoMalignas = malignas.reduce((t, l) => t + l.contagens.seguimento, 0);
+  const soma = (o: Record<string, number>) => Object.values(o).reduce((t, v) => t + v, 0);
+  return {
+    dias,
+    inicio: b.inicio,
+    fim: HOJE_MOCK,
+    atualizado_em: ATUALIZADO_EM_2_4,
+    modelo_versoes: b.modelo_versoes,
+    desempenho: {
+      n_com_desfecho: matriz.reduce((t, l) => t + l.n, 0),
+      sensibilidade_maligna: proporcao2_4(encaminhadasMalignas, nMalignas),
+      falso_negativo_critico: proporcao2_4(seguimentoMalignas, nMalignas),
+      matriz,
+    },
+    por_classe: matriz.map((l) => ({
+      rotulo: l.rotulo,
+      nome: l.nome,
+      maligna: l.maligna,
+      encaminhamento: proporcao2_4(l.contagens.encaminhar_prioritario + l.contagens.encaminhar_eletivo, l.n),
+    })),
+    sinais: {
+      encaminhamento: proporcao2_4(b.encaminhadas, b.triagens),
+      indeterminado: proporcao2_4(b.indeterminadas, b.triagens),
+      captura_reprovada: proporcao2_4(b.reprovadas, b.capturas),
+      psi: indice2_4(b.psi.valor, b.psi.ic95, b.triagens),
+    },
+    concordancia: {
+      ponta: proporcao2_4(b.ponta.concordante, soma({ ...b.ponta })),
+      ponta_partes: b.ponta,
+      especialista: proporcao2_4(b.especialista.adequada, soma(b.especialista)),
+      especialista_partes: b.especialista,
+    },
+    alertas: b.alertas,
+  };
+};
+
+export function buscarMetricas2_4(dias: PeriodoDias2_4): Promise<Metricas2_4> {
+  return esperar(montarMetricas2_4(dias));
+}
