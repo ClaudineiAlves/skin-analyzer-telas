@@ -118,7 +118,7 @@ export const RESULTADO_PRIORITARIO_MOCK: Resultado = {
   classes: [
     { rotulo: "mel", nome: "Melanoma", valor: 0.6 },
     { rotulo: "nv", nome: "Nevo melanocítico", valor: 0.3 },
-    { rotulo: "bkl", nome: "Ceratose benigna pigmentada", valor: 0.1 },
+    { rotulo: "bkl", nome: "Ceratose seborreica e similares", valor: 0.1 },
   ],
   probabilidade_maligna: 0.62,
   threshold_usado: 0.5,
@@ -707,7 +707,7 @@ export const RESULTADO_SEGUIMENTO_MOCK_1_7: Resultado = {
   risco: "baixo",
   classes: [
     { rotulo: "nv", nome: "Nevo melanocítico", valor: 0.82 },
-    { rotulo: "bkl", nome: "Ceratose benigna pigmentada", valor: 0.12 },
+    { rotulo: "bkl", nome: "Ceratose seborreica e similares", valor: 0.12 },
     { rotulo: "mel", nome: "Melanoma", valor: 0.06 },
   ],
   probabilidade_maligna: 0.08,
@@ -720,7 +720,7 @@ export const RESULTADO_INDETERMINADO_MOCK_1_7: Resultado = {
   classes: [
     { rotulo: "nv", nome: "Nevo melanocítico", valor: 0.38 },
     { rotulo: "mel", nome: "Melanoma", valor: 0.34 },
-    { rotulo: "bkl", nome: "Ceratose benigna pigmentada", valor: 0.28 },
+    { rotulo: "bkl", nome: "Ceratose seborreica e similares", valor: 0.28 },
   ],
   probabilidade_maligna: 0.41,
 };
