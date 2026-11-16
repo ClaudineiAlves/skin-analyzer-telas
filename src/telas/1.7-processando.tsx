@@ -84,7 +84,7 @@ export default function Tela() {
     return (
       <div style={S.centro}>
         <MensagemProblema
-          oQueHouve="A análise está demorando mais que o normal."
+          oQueHouve="A análise está levando mais tempo que o esperado."
           oQueFazer="Tente de novo. Se cancelar, o atendimento volta para o início sem resultado."
           acoes={acoes}
           codigo={CODIGOS.API_TIMEOUT}
