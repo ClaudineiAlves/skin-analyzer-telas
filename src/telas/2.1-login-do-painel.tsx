@@ -201,6 +201,7 @@ const S: Record<string, CSSProperties> = {
     width: "100%",
     maxWidth: 440,
     display: "grid",
+    gridTemplateColumns: "minmax(0, 1fr)",
     gap: "calc(var(--espaco) * 3)",
     padding: "calc(var(--espaco) * 4)",
     background: "var(--cor-branco)",
@@ -223,6 +224,8 @@ const S: Record<string, CSSProperties> = {
   campo: { display: "grid", gap: 4 },
   rotulo: { fontWeight: 600 },
   input: {
+    width: "100%",
+    minWidth: 0,
     minHeight: "var(--toque)",
     padding: "0 calc(var(--espaco) * 1.5)",
     font: "inherit",
