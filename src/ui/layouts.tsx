@@ -13,10 +13,19 @@ export function BarraStatus() {
   const [versao, setVersao] = useState<string | null>(null);
   const [pendentes, setPendentes] = useState(0);
   const [online, setOnline] = useState(navigator.onLine);
+  const { pathname } = useLocation();
+
+  // Recarrega a cada troca de tela: salvar uma triagem muda o número de pendentes.
+  useEffect(() => {
+    let ativo = true;
+    buscarPendentesSync().then((n) => ativo && setPendentes(n));
+    return () => {
+      ativo = false;
+    };
+  }, [pathname]);
 
   useEffect(() => {
     buscarSaude().then((s) => setVersao(s.modelo_versao));
-    buscarPendentesSync().then(setPendentes);
     const on = () => setOnline(true);
     const off = () => setOnline(false);
     window.addEventListener("online", on);
