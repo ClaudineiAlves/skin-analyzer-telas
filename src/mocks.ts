@@ -544,3 +544,101 @@ export function buscarCasosPainel2_2(): Promise<CasoPainel2_2[]> {
 export function buscarCasoPainel2_2(id: string): Promise<CasoPainel2_2 | null> {
   return esperar(CASOS_PAINEL_2_2.find((c) => c.id === id) ?? null);
 }
+
+// ── Tela 1.6 ── Captura reprovada ──────────────────────────────────────
+// O controle de qualidade identifica o motivo pelo código (a 1.5 hoje só devolve QC-FOCO).
+// Variações pela URL, só para testar a 1.6:
+// ?reprovacao=foco|enquadramento|escura|clara (troca o motivo recebido da 1.5)
+// ?reprovacoes-seguidas=3 (mostra a orientação de várias reprovações seguidas)
+export const CODIGOS_REPROVACAO_1_6 = {
+  foco: "QC-FOCO",
+  enquadramento: "QC-ENQUADRAMENTO",
+  escura: "QC-ESCURA",
+  clara: "QC-CLARA",
+} as const;
+
+export type MotivoReprovacao1_6 = keyof typeof CODIGOS_REPROVACAO_1_6;
+
+const parametrosReprovacao1_6 = new URLSearchParams(window.location.search);
+const motivoTeste1_6 = parametrosReprovacao1_6.get("reprovacao");
+export const reprovacoesSeguidasTeste1_6 = Number(parametrosReprovacao1_6.get("reprovacoes-seguidas")) || 0;
+
+// Coordenadas em % da imagem (viewBox 0–100). "quadro" = o problema é a imagem inteira.
+export type AreaReprovacao1_6 = { tipo: "circulo"; cx: number; cy: number; r: number } | { tipo: "quadro" };
+
+export interface CapturaReprovada1_6 {
+  codigo: string;
+  motivo: MotivoReprovacao1_6 | null; // null = código que a tela não conhece
+  imagem_url: string;
+  area: AreaReprovacao1_6;
+  centro_esperado: { cx: number; cy: number; r: number } | null; // só no enquadramento
+}
+
+const svgCaptura1_6 = (conteudo: string) =>
+  "data:image/svg+xml," +
+  encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 400">${conteudo}</svg>`);
+
+// A 1.5 devolve sempre a mesma imagem; aqui simulamos como a captura teria saído em cada motivo.
+const IMAGENS_REPROVADAS_1_6: Record<MotivoReprovacao1_6, string> = {
+  foco: svgCaptura1_6(
+    '<defs><filter id="b"><feGaussianBlur stdDeviation="9"/></filter></defs><rect width="400" height="400" fill="#c9b9a6"/><g filter="url(#b)"><ellipse cx="188" cy="196" rx="70" ry="58" fill="#6b4a33" opacity="0.5"/><ellipse cx="212" cy="204" rx="70" ry="58" fill="#6b4a33" opacity="0.7"/></g>',
+  ),
+  enquadramento: svgCaptura1_6(
+    '<rect width="400" height="400" fill="#c9b9a6"/><ellipse cx="320" cy="300" rx="70" ry="58" fill="#6b4a33"/>',
+  ),
+  escura: svgCaptura1_6(
+    '<rect width="400" height="400" fill="#2e2620"/><ellipse cx="200" cy="200" rx="70" ry="58" fill="#1a130e"/>',
+  ),
+  clara: svgCaptura1_6(
+    '<rect width="400" height="400" fill="#f4efe9"/><ellipse cx="200" cy="200" rx="70" ry="58" fill="#ddcdbd"/>',
+  ),
+};
+
+const AREAS_REPROVACAO_1_6: Record<MotivoReprovacao1_6, AreaReprovacao1_6> = {
+  foco: { tipo: "circulo", cx: 50, cy: 50, r: 26 },
+  enquadramento: { tipo: "circulo", cx: 80, cy: 75, r: 22 },
+  escura: { tipo: "quadro" },
+  clara: { tipo: "quadro" },
+};
+
+// Mesmo círculo-guia da 1.5.
+const CENTRO_ESPERADO_1_6 = { cx: 50, cy: 50, r: 30 };
+
+export function buscarCapturaReprovada1_6(codigoRecebido: string, capturaUrl: string | null): Promise<CapturaReprovada1_6> {
+  const codigo =
+    motivoTeste1_6 && motivoTeste1_6 in CODIGOS_REPROVACAO_1_6
+      ? CODIGOS_REPROVACAO_1_6[motivoTeste1_6 as MotivoReprovacao1_6]
+      : codigoRecebido;
+  const motivo =
+    (Object.keys(CODIGOS_REPROVACAO_1_6) as MotivoReprovacao1_6[]).find((m) => CODIGOS_REPROVACAO_1_6[m] === codigo) ??
+    null;
+  return esperar({
+    codigo,
+    motivo,
+    imagem_url: motivo ? IMAGENS_REPROVADAS_1_6[motivo] : (capturaUrl ?? CAPTURA_IMAGEM_MOCK_URL),
+    area: motivo ? AREAS_REPROVACAO_1_6[motivo] : { tipo: "quadro" },
+    centro_esperado: motivo === "enquadramento" ? CENTRO_ESPERADO_1_6 : null,
+  });
+}
+
+export const MOTIVO_NAO_ANALISADO_1_6 = "Não analisado — captura inadequada";
+
+export interface TriagemNaoAnalisada1_6 extends Triagem {
+  motivo_sem_resultado: string;
+}
+
+// Registra o atendimento sem resultado; entra na lista de hoje da 1.3 e nas pendentes de envio.
+export function registrarNaoAnalisado1_6(dados: { codigo: string; local: string; operador_id: string }): Promise<void> {
+  const agora = new Date();
+  const hora = `${String(agora.getHours()).padStart(2, "0")}:${String(agora.getMinutes()).padStart(2, "0")}`;
+  const triagem: TriagemNaoAnalisada1_6 = {
+    id: `t-${crypto.randomUUID()}`,
+    ...dados,
+    data: `${HOJE_MOCK}T${hora}:00`,
+    resultado: null,
+    sync: "aguardando",
+    motivo_sem_resultado: MOTIVO_NAO_ANALISADO_1_6,
+  };
+  TRIAGENS_MOCK.push(triagem);
+  return esperar(undefined);
+}
