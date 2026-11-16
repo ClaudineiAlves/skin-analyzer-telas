@@ -227,3 +227,18 @@ export function criarPin(usuarioId: string, pin: string): Promise<void> {
   pinsCriados.set(usuarioId, pin);
   return esperar(undefined);
 }
+
+// ── Início (1.3) ───────────────────────────────────────────────────────
+// Variações pela URL, além de ?cenario=: ?inicio=vazia (nenhuma triagem hoje)
+export type CenarioInicio = "normal" | "vazia";
+
+export const cenarioInicio: CenarioInicio =
+  new URLSearchParams(window.location.search).get("inicio") === "vazia" ? "vazia" : "normal";
+
+// "Hoje" do protótipo: as triagens de exemplo são deste dia.
+export const HOJE_MOCK = "2026-11-10";
+
+export function buscarTriagensDeHoje(operadorId: string): Promise<Triagem[]> {
+  if (cenarioInicio === "vazia") return esperar([]);
+  return esperar(TRIAGENS_MOCK.filter((t) => t.operador_id === operadorId && t.data.startsWith(HOJE_MOCK)));
+}
