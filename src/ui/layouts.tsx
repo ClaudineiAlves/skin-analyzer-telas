@@ -60,7 +60,8 @@ export function BarraStatus() {
 // ── Inatividade: 2 min sem toque → /bloqueio (pausa durante 1.7) ───────
 function useBloqueioPorInatividade() {
   const navigate = useNavigate();
-  const { pathname } = useLocation();
+  const location = useLocation();
+  const { pathname } = location;
   const { usuario } = useSessao();
   const timer = useRef<number>();
 
@@ -69,7 +70,7 @@ function useBloqueioPorInatividade() {
     const reiniciar = () => {
       window.clearTimeout(timer.current);
       timer.current = window.setTimeout(
-        () => navigate("/bloqueio", { state: { voltarPara: pathname } }),
+        () => navigate("/bloqueio", { state: { voltarPara: pathname + location.search, voltarEstado: location.state } }),
         TEMPOS.inatividadeMs,
       );
     };
