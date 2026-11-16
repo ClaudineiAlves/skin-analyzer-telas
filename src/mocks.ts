@@ -1,5 +1,5 @@
 // Dados falsos do protótipo. Nenhum valor aqui vem de uso real.
-import { TEMPOS } from "./config";
+import { LIMITES, TEMPOS } from "./config";
 import type { Conduta, Risco } from "./dominio";
 
 export type Cenario = "normal" | "integridade" | "dermatoscopio" | "lento";
@@ -151,3 +151,79 @@ export const CONTAS_PAINEL = [
 ];
 export const SENHA_PAINEL_MOCK = "senha-de-teste";
 export const CODIGO_2FA_MOCK = "000000";
+
+// ── Login por PIN (1.2) ────────────────────────────────────────────────
+// Variações pela URL, além de ?cenario=: ?login=sem-operadores · ?login=primeiro-acesso
+export type CenarioLogin = "normal" | "sem-operadores" | "primeiro-acesso";
+
+export const cenarioLogin: CenarioLogin = (() => {
+  const c = new URLSearchParams(window.location.search).get("login");
+  return c === "sem-operadores" || c === "primeiro-acesso" ? c : "normal";
+})();
+
+// Política de pausa devolvida pelo "servidor" após LIMITES.tentativasPin erros seguidos.
+export const PAUSA_PIN_MINUTOS = 5;
+
+export interface UsuarioLogin extends Usuario {
+  primeiro_acesso: boolean; // ainda não criou o próprio PIN
+  pausado: boolean;
+}
+
+export type RespostaPin =
+  | { status: "ok" }
+  | { status: "incorreto"; restantes: number }
+  | { status: "pausado"; minutos: number };
+
+const USUARIO_PRIMEIRO_ACESSO: Usuario = {
+  id: "u-4",
+  nome: "Paulo Lima",
+  funcao: "tecnico_enfermagem",
+  perfil: "operador",
+  ativo: true,
+};
+
+// Estado do "servidor" em memória: some ao recarregar.
+const errosPin = new Map<string, number>();
+const pausaPinAte = new Map<string, number>();
+const pinsCriados = new Map<string, string>();
+
+const pinPausado = (id: string) => (pausaPinAte.get(id) ?? 0) > Date.now();
+
+export function buscarUsuariosLogin(): Promise<UsuarioLogin[]> {
+  const base =
+    cenarioLogin === "sem-operadores"
+      ? USUARIOS.filter((u) => u.perfil === "administrador")
+      : cenarioLogin === "primeiro-acesso"
+        ? [...USUARIOS, USUARIO_PRIMEIRO_ACESSO]
+        : USUARIOS;
+  return esperar(
+    base
+      .filter((u) => u.ativo)
+      .map((u) => ({
+        ...u,
+        primeiro_acesso: u.id === USUARIO_PRIMEIRO_ACESSO.id && !pinsCriados.has(u.id),
+        pausado: pinPausado(u.id),
+      })),
+  );
+}
+
+export function verificarPin(usuarioId: string, pin: string): Promise<RespostaPin> {
+  if (pinPausado(usuarioId)) return esperar({ status: "pausado", minutos: PAUSA_PIN_MINUTOS });
+  if (pin === (pinsCriados.get(usuarioId) ?? PIN_MOCK)) {
+    errosPin.delete(usuarioId);
+    return esperar({ status: "ok" });
+  }
+  const erros = (errosPin.get(usuarioId) ?? 0) + 1;
+  if (erros >= LIMITES.tentativasPin) {
+    errosPin.delete(usuarioId);
+    pausaPinAte.set(usuarioId, Date.now() + PAUSA_PIN_MINUTOS * 60_000);
+    return esperar({ status: "pausado", minutos: PAUSA_PIN_MINUTOS });
+  }
+  errosPin.set(usuarioId, erros);
+  return esperar({ status: "incorreto", restantes: LIMITES.tentativasPin - erros });
+}
+
+export function criarPin(usuarioId: string, pin: string): Promise<void> {
+  pinsCriados.set(usuarioId, pin);
+  return esperar(undefined);
+}
