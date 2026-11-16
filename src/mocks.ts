@@ -1601,3 +1601,46 @@ export async function registrarRelato1_18(dados: {
   RELATOS_1_18.push(relato);
   return esperar({ ...relato, modelo: { ...relato.modelo } });
 }
+
+// ── Tela 1.11 ──
+// Histórico do operador: só as triagens do operador da sessão, na mesma base da 1.15
+// (TRIAGENS_MOCK, inclusive as acrescentadas pela 1.6 e 1.8, mais as anteriores da unidade).
+// Variações pela URL: ?historico=vazio (nenhuma triagem do operador). ?historico-unidade=vazio também esvazia.
+export const cenarioHistorico1_11: "normal" | "vazio" =
+  new URLSearchParams(window.location.search).get("historico") === "vazio" ? "vazio" : "normal";
+
+export const CODIGO_TRIAGEM_NAO_ENCONTRADA_1_11 = "HIST-NAO-ENCONTRADA";
+
+// Só A-0412 tem imagem guardada neste protótipo (a mesma da 2.3); as demais aparecem como indisponíveis.
+const IMAGENS_1_11: Record<string, string> = { "t-0412": CAPTURA_IMAGEM_MOCK_URL };
+
+export interface TriagemOperador1_11 extends Triagem {
+  decisao_profissional: DecisaoProfissional1_8 | null; // null = não registrada
+  imagem_url: string | null;
+  anulacao: Anulacao1_15 | null;
+}
+
+export async function buscarHistoricoOperador1_11(operadorId: string): Promise<TriagemOperador1_11[]> {
+  if (cenarioHistorico1_11 === "vazio") return esperar([]);
+  const unidade = await buscarTriagensUnidade1_15();
+  return unidade
+    .filter((t) => t.operador_id === operadorId)
+    .map((t) => {
+      // A 1.15 não lê a decisão gravada pela 1.8; a gravada vale mais que o registro da unidade.
+      const salva = TRIAGENS_MOCK.find((x) => x.id === t.id) as Partial<TriagemSalva1_8> | undefined;
+      return {
+        id: t.id,
+        codigo: t.codigo,
+        data: t.data,
+        operador_id: t.operador_id,
+        local: t.local,
+        resultado: t.resultado,
+        sync: t.sync,
+        decisao_profissional:
+          salva?.decisao_profissional !== undefined ? salva.decisao_profissional : t.decisao_profissional,
+        imagem_url: IMAGENS_1_11[t.id] ?? null,
+        anulacao: t.anulacao,
+      };
+    })
+    .sort((a, b) => b.data.localeCompare(a.data));
+}
