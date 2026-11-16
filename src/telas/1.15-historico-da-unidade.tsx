@@ -686,7 +686,7 @@ const S: Record<string, CSSProperties> = {
     border: "2px solid var(--cor-grafite)",
     borderRadius: "var(--raio)",
   },
-  acoes: { display: "grid", gap: 4, justifyItems: "end", textAlign: "right", minWidth: 190 },
+  acoes: { display: "grid", gap: 4, justifyItems: "end", textAlign: "right" },
   botaoAcao: { padding: "0 calc(var(--espaco) * 2)", whiteSpace: "nowrap" },
   oculto: { position: "absolute", width: 1, height: 1, overflow: "hidden", clip: "rect(0 0 0 0)" },
   motivos: { display: "grid", gap: "var(--espaco)" },
