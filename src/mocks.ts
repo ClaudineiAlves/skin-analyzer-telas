@@ -1555,3 +1555,49 @@ export function solicitarVerificacao2_5(id: string): Promise<{ solicitada_em: st
   a.verificacao_solicitada_em ??= `${HOJE_MOCK}T${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}:00`;
   return esperar({ solicitada_em: a.verificacao_solicitada_em });
 }
+
+// ── Tela 1.18 ──
+// Relatar um problema. Os relatos ficam no "servidor" em memória (somem ao recarregar).
+// Sem texto livre, imagem ou dado do paciente: só a categoria, os códigos e os dados técnicos.
+// Modelo e aparelho vêm da 1.17 (que usa a situação da 1.16), assim a versão bate após instalar/reverter.
+// Variação pela URL: ?rede=desconectada (via 1.17) → o relato fica na fila de envio.
+export type CategoriaRelato1_18 = "resultado_errado" | "captura" | "travou" | "risco_dano" | "outro";
+
+export interface Relato1_18 {
+  id: string;
+  categoria: CategoriaRelato1_18;
+  codigo_triagem: string | null; // código do atendimento, se o operador manteve
+  codigo_tecnico: string | null; // ex.: MOD-FUMACA, quando o relato parte de uma mensagem de problema
+  operador_id: string;
+  data: string; // ISO
+  modelo: { nome: string; versao: string };
+  aparelho: string;
+  software_versao: string;
+  registro_tecnico: string; // referência ao log técnico do aparelho anexado
+  envio: "na_fila" | "enviado";
+}
+
+export const RELATOS_1_18: Relato1_18[] = [];
+
+export async function registrarRelato1_18(dados: {
+  categoria: CategoriaRelato1_18;
+  codigo_triagem: string | null;
+  codigo_tecnico: string | null;
+  operador_id: string;
+}): Promise<Relato1_18> {
+  const { info } = await buscarConfiguracoes1_17();
+  const d = new Date();
+  const hora = `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
+  const relato: Relato1_18 = {
+    id: `r-${crypto.randomUUID()}`,
+    ...dados,
+    data: `${HOJE_MOCK}T${hora}:00`,
+    modelo: { ...info.sobre.modelo },
+    aparelho: info.sobre.aparelho,
+    software_versao: info.sobre.software_versao,
+    registro_tecnico: `log-${info.sobre.aparelho}-${HOJE_MOCK}`,
+    envio: info.rede.conectada ? "enviado" : "na_fila",
+  };
+  RELATOS_1_18.push(relato);
+  return esperar({ ...relato, modelo: { ...relato.modelo } });
+}
