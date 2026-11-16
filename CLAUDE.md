@@ -12,7 +12,7 @@ Prompts das telas: Google Doc "Skin Analyzer AI — Prompts das telas (versão s
 - `src/sessao.tsx` — Context em memória: usuário, atendimento, captura e resultado atuais.
 - `src/ui/` — Botao, TecladoNumerico, Dialogo, FaixaTriagem, BlocoConduta, MensagemProblema, BarraStatus, MenuAdmin, Layouts, Placeholder.
 - `src/telas/<id>-<slug>.tsx` — uma tela por arquivo. Mexa só no arquivo da sua tela. Em `mocks.ts` pode ACRESCENTAR dados que a sua tela precisa, sem alterar os existentes. Mudança em `ui/`, `sessao.tsx` ou rotas é pedida à parte.
-- Telas prontas: 1.1, 1.1b. As demais são `<Placeholder>`.
+- Telas prontas: todas (1.1–1.18, 1.1b e 2.1–2.6).
 - `src/App.tsx` — rotas do aparelho em `/` e do painel em `/painel/*`.
 
 Comandos: `npm install` · `npm run dev` (http://localhost:5173) · `npm run build`.
