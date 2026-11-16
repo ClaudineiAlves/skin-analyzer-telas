@@ -642,3 +642,48 @@ export function registrarNaoAnalisado1_6(dados: { codigo: string; local: string;
   TRIAGENS_MOCK.push(triagem);
   return esperar(undefined);
 }
+
+// ── Tela 2.3 ──
+// Revisão do caso. O desfecho do especialista fica num registro à parte: não altera o
+// resultado do modelo. Em memória: some ao recarregar.
+export type CondutaEspecialista2_3 = "biopsia" | "excisao" | "acompanhamento" | "alta";
+export type ConcordanciaPrioridade2_3 = "adequada" | "deveria_ser_maior" | "deveria_ser_menor";
+
+// Valor do select histopatológico fora das classes do modelo.
+export const HISTOPATOLOGICO_OUTRO_2_3 = "outro";
+
+export interface Desfecho2_3 {
+  conduta: CondutaEspecialista2_3;
+  concordancia: ConcordanciaPrioridade2_3;
+  histopatologico: string | null; // rótulo da classe, HISTOPATOLOGICO_OUTRO_2_3 ou null = ainda não disponível
+}
+
+export interface DesfechoRegistrado2_3 extends Desfecho2_3 {
+  caso_id: string;
+  revisor: { nome: string; email: string };
+  registrado_em: string; // ISO
+}
+
+// Só a triagem A-0412 (a mesma do aparelho) chegou com imagem; as demais não foram enviadas.
+const IMAGENS_CASOS_2_3: Record<string, string> = { "c-0412": CAPTURA_IMAGEM_MOCK_URL };
+
+export function buscarImagemCaso2_3(casoId: string): Promise<string | null> {
+  return esperar(IMAGENS_CASOS_2_3[casoId] ?? null);
+}
+
+const desfechos2_3 = new Map<string, DesfechoRegistrado2_3>();
+
+// Conclui a revisão do caso na fila (2.2); o resultado do modelo fica como estava.
+export function registrarDesfecho2_3(
+  casoId: string,
+  desfecho: Desfecho2_3,
+  revisor: { nome: string; email: string },
+): Promise<void> {
+  desfechos2_3.set(casoId, { ...desfecho, caso_id: casoId, revisor, registrado_em: new Date().toISOString() });
+  const caso = CASOS_PAINEL_2_2.find((c) => c.id === casoId);
+  if (caso) {
+    caso.status = "concluido";
+    caso.revisor = revisor;
+  }
+  return esperar(undefined);
+}
