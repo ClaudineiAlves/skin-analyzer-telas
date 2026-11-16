@@ -441,7 +441,7 @@ function MatrizConfusao({ linhas }: { linhas: LinhaMatriz2_4[] }) {
           </caption>
           <thead>
             <tr>
-              <th scope="col" style={S.th}>
+              <th scope="col" style={{ ...S.th, whiteSpace: "normal" }}>
                 HISTOPATOLÓGICO ↓ · SUGERIDO →
               </th>
               {CONDUTAS_MATRIZ_2_4.map((c) => (
