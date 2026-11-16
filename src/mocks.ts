@@ -869,3 +869,32 @@ export async function anularTriagem1_15(dados: {
   anulacoes1_15.set(dados.triagemId, { motivo: dados.motivo, por: dados.adminNome, em: `${HOJE_MOCK}T${hora}:00` });
   return { status: "ok" };
 }
+
+// ── Tela 1.8 ── Resultado ──────────────────────────────────────────────
+// Decisão opcional do profissional da ponta; "outra" = conduta fora das três sugeridas.
+export type DecisaoProfissional1_8 = Exclude<Conduta, "indeterminado"> | "outra";
+
+export interface TriagemSalva1_8 extends Triagem {
+  decisao_profissional: DecisaoProfissional1_8 | null; // null = não registrada
+}
+
+// Momento da triagem: dia do protótipo (HOJE_MOCK) com a hora do aparelho, como na 1.6.
+export function momentoTriagem1_8(): string {
+  const agora = new Date();
+  const hora = `${String(agora.getHours()).padStart(2, "0")}:${String(agora.getMinutes()).padStart(2, "0")}`;
+  return `${HOJE_MOCK}T${hora}:00`;
+}
+
+// Salva a triagem com o resultado; entra na lista de hoje da 1.3 e nas pendentes de envio.
+export function registrarTriagem1_8(dados: {
+  codigo: string;
+  local: string;
+  operador_id: string;
+  data: string; // ISO, de momentoTriagem1_8
+  resultado: Resultado;
+  decisao_profissional: DecisaoProfissional1_8 | null;
+}): Promise<void> {
+  const triagem: TriagemSalva1_8 = { id: `t-${crypto.randomUUID()}`, ...dados, sync: "aguardando" };
+  TRIAGENS_MOCK.push(triagem);
+  return esperar(undefined);
+}
