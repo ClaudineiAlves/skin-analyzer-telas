@@ -687,3 +687,56 @@ export function registrarDesfecho2_3(
   }
   return esperar(undefined);
 }
+
+// ── Tela 1.7 ── Processando ────────────────────────────────────────────
+// Regra do mock pelo local escolhido na 1.4:
+// pé ("Pé … (peito do pé)" / "Pé … (sola)") → indeterminado (1.9) · "Dorso" → prioritário (1.8) · outros → seguimento (1.8).
+// Variações pela URL, além de ?cenario=lento (análise só responde depois do limite de TEMPOS.predictTimeoutMs):
+// ?analise=lenta (o mesmo, sem travar a 1.1) · ?analise=sem-aviso (resposta chega sem o aviso de triagem)
+const parametroAnalise1_7 = new URLSearchParams(window.location.search).get("analise");
+const analiseLenta1_7 = cenario === "lento" || parametroAnalise1_7 === "lenta";
+const analiseSemAviso1_7 = parametroAnalise1_7 === "sem-aviso";
+
+export const ANALISE_DURACAO_MS_1_7 = 3_000;
+// Resposta que chegou sem o aviso de triagem: a tela não mostra resultado.
+export const CODIGO_SEM_AVISO_1_7 = "API-SEM-AVISO";
+
+export const RESULTADO_SEGUIMENTO_MOCK_1_7: Resultado = {
+  ...RESULTADO_PRIORITARIO_MOCK,
+  conduta: "seguimento",
+  risco: "baixo",
+  classes: [
+    { rotulo: "nv", nome: "Nevo melanocítico", valor: 0.82 },
+    { rotulo: "bkl", nome: "Ceratose benigna pigmentada", valor: 0.12 },
+    { rotulo: "mel", nome: "Melanoma", valor: 0.06 },
+  ],
+  probabilidade_maligna: 0.08,
+};
+
+export const RESULTADO_INDETERMINADO_MOCK_1_7: Resultado = {
+  ...RESULTADO_PRIORITARIO_MOCK,
+  conduta: "indeterminado",
+  risco: null,
+  classes: [
+    { rotulo: "nv", nome: "Nevo melanocítico", valor: 0.38 },
+    { rotulo: "mel", nome: "Melanoma", valor: 0.34 },
+    { rotulo: "bkl", nome: "Ceratose benigna pigmentada", valor: 0.28 },
+  ],
+  probabilidade_maligna: 0.41,
+};
+
+const resultadoPorLocal1_7 = (local: string): Resultado => {
+  const l = local.trim().toLowerCase();
+  if (l.startsWith("pé") || l.includes("sola") || l.includes("peito do pé")) return RESULTADO_INDETERMINADO_MOCK_1_7;
+  if (l === "dorso") return RESULTADO_PRIORITARIO_MOCK;
+  return RESULTADO_SEGUIMENTO_MOCK_1_7;
+};
+
+export function analisarImagem1_7(dados: { local: string; imagemUrl: string }): Promise<Resultado> {
+  const base = resultadoPorLocal1_7(dados.local);
+  const resultado = analiseSemAviso1_7 ? { ...base, aviso: "" } : base;
+  return esperar(
+    resultado,
+    analiseLenta1_7 ? TEMPOS.predictTimeoutMs + ANALISE_DURACAO_MS_1_7 : ANALISE_DURACAO_MS_1_7,
+  );
+}
