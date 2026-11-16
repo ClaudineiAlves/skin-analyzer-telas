@@ -472,3 +472,75 @@ export function desativarUsuario1_14(usuarioId: string): Promise<RespostaDesativ
 export function redefinirPin1_14(_usuarioId: string): Promise<{ pinTemporario: string }> {
   return esperar({ pinTemporario: gerarPinTemporario1_14() });
 }
+
+// ── Tela 2.2 ──
+// Casos de triagem enviados ao painel (2.2 Fila de casos; reaproveitados pela 2.3 Revisão do caso).
+// Sem nome de paciente: o caso é identificado só pelo código do atendimento.
+// Variações pela URL: ?fila=vazia (nenhum caso no painel)
+export const cenarioFila2_2: "normal" | "vazia" =
+  new URLSearchParams(window.location.search).get("fila") === "vazia" ? "vazia" : "normal";
+
+export type StatusCaso2_2 = "aguardando" | "em_revisao" | "concluido";
+export type DecisaoPonta2_2 = Exclude<Conduta, "indeterminado">;
+
+export interface CasoPainel2_2 {
+  id: string; // rota /painel/casos/:id
+  codigo: string; // código do atendimento no aparelho
+  unidade: string;
+  aparelho: string;
+  data_triagem: string; // ISO
+  operador: string; // quem fez a triagem no aparelho
+  local: string;
+  faixa_idade: string; // faixas de LIMITES.faixaIdadeAnos, como na 1.4
+  sexo: "feminino" | "masculino" | "nao_informado";
+  resultado: Resultado; // conduta sugerida, risco, versão do modelo, classes, aviso
+  decisao_ponta: DecisaoPonta2_2 | null; // null = profissional da ponta não registrou decisão
+  status: StatusCaso2_2;
+  revisor: { nome: string; email: string } | null; // quem abriu/concluiu a revisão
+  espera_dias: number; // dias desde a triagem, calculados pelo "servidor"
+}
+
+// "Hoje" do painel = HOJE_MOCK, o mesmo dia das triagens do aparelho.
+const esperaDias2_2 = (dataIso: string) =>
+  Math.round((Date.parse(HOJE_MOCK) - Date.parse(dataIso.slice(0, 10))) / 86_400_000);
+
+const resultado2_2 = (conduta: Conduta, risco: Risco | null, modelo_versao = "1.2.0"): Resultado => ({
+  ...RESULTADO_PRIORITARIO_MOCK,
+  conduta,
+  risco,
+  modelo_versao,
+});
+
+const REVISOR_OUTRO_2_2 = { nome: "Dr. Henrique Prado", email: "henrique.prado@exemplo.invalid" };
+const REVISOR_SESSAO_2_2 = { nome: CONTAS_PAINEL[0].nome, email: CONTAS_PAINEL[0].email };
+
+type CasoSemEspera2_2 = Omit<CasoPainel2_2, "espera_dias">;
+
+const CASOS_BASE_2_2: CasoSemEspera2_2[] = [
+  // Mesma triagem A-0412 do aparelho (TRIAGENS_MOCK), já sincronizada.
+  { id: "c-0412", codigo: "A-0412", unidade: "UBS Jardim das Flores", aparelho: "SA-0017", data_triagem: "2026-11-10T09:12:00", operador: "Ana Souza", local: "Dorso", faixa_idade: "55–59", sexo: "feminino", resultado: resultado2_2("encaminhar_prioritario", "alto"), decisao_ponta: "encaminhar_prioritario", status: "aguardando", revisor: null },
+  { id: "c-0377", codigo: "A-0377", unidade: "UBS Vila Nova", aparelho: "SA-0009", data_triagem: "2026-11-04T14:30:00", operador: "Rita Moraes", local: "Couro cabeludo", faixa_idade: "70–74", sexo: "masculino", resultado: resultado2_2("encaminhar_prioritario", "alto"), decisao_ponta: "encaminhar_eletivo", status: "aguardando", revisor: null },
+  { id: "c-0391", codigo: "A-0391", unidade: "UBS Centro", aparelho: "SA-0004", data_triagem: "2026-11-06T11:05:00", operador: "Pedro Alves", local: "Mão direita", faixa_idade: "40–44", sexo: "feminino", resultado: resultado2_2("indeterminado", null), decisao_ponta: null, status: "aguardando", revisor: null },
+  { id: "c-0365", codigo: "A-0365", unidade: "UBS Vila Nova", aparelho: "SA-0009", data_triagem: "2026-11-03T10:40:00", operador: "Rita Moraes", local: "Face", faixa_idade: "45–49", sexo: "masculino", resultado: resultado2_2("indeterminado", null), decisao_ponta: "encaminhar_eletivo", status: "aguardando", revisor: null },
+  { id: "c-0358", codigo: "A-0358", unidade: "UBS Jardim das Flores", aparelho: "SA-0017", data_triagem: "2026-11-02T08:50:00", operador: "Marcos Ribeiro", local: "Perna esquerda", faixa_idade: "30–34", sexo: "nao_informado", resultado: resultado2_2("encaminhar_eletivo", "moderado", "1.1.3"), decisao_ponta: "encaminhar_eletivo", status: "aguardando", revisor: null },
+  { id: "c-0402", codigo: "A-0402", unidade: "UBS Centro", aparelho: "SA-0004", data_triagem: "2026-11-07T15:20:00", operador: "Pedro Alves", local: "Ombro direito", faixa_idade: "60–64", sexo: "masculino", resultado: resultado2_2("encaminhar_eletivo", "moderado"), decisao_ponta: "seguimento", status: "aguardando", revisor: null },
+  // Seguimento chega ao painel, mas fica fora da fila de revisão.
+  { id: "c-0385", codigo: "A-0385", unidade: "UBS Centro", aparelho: "SA-0004", data_triagem: "2026-11-05T09:30:00", operador: "Pedro Alves", local: "Abdome", faixa_idade: "25–29", sexo: "feminino", resultado: resultado2_2("seguimento", "baixo"), decisao_ponta: "seguimento", status: "aguardando", revisor: null },
+  { id: "c-0349", codigo: "A-0349", unidade: "UBS Vila Nova", aparelho: "SA-0009", data_triagem: "2026-11-01T16:10:00", operador: "Rita Moraes", local: "Tórax", faixa_idade: "65–69", sexo: "masculino", resultado: resultado2_2("encaminhar_prioritario", "alto", "1.1.3"), decisao_ponta: "encaminhar_prioritario", status: "em_revisao", revisor: REVISOR_OUTRO_2_2 },
+  { id: "c-0395", codigo: "A-0395", unidade: "UBS Jardim das Flores", aparelho: "SA-0017", data_triagem: "2026-11-06T13:45:00", operador: "Ana Souza", local: "Braço esquerdo", faixa_idade: "50–54", sexo: "feminino", resultado: resultado2_2("encaminhar_eletivo", "moderado"), decisao_ponta: "encaminhar_prioritario", status: "em_revisao", revisor: REVISOR_SESSAO_2_2 },
+  { id: "c-0330", codigo: "A-0330", unidade: "UBS Centro", aparelho: "SA-0004", data_triagem: "2026-10-27T10:00:00", operador: "Pedro Alves", local: "Costas", faixa_idade: "75–79", sexo: "masculino", resultado: resultado2_2("encaminhar_prioritario", "alto", "1.1.3"), decisao_ponta: "encaminhar_prioritario", status: "concluido", revisor: REVISOR_SESSAO_2_2 },
+  { id: "c-0341", codigo: "A-0341", unidade: "UBS Jardim das Flores", aparelho: "SA-0017", data_triagem: "2026-10-30T14:15:00", operador: "Marcos Ribeiro", local: "Pescoço", faixa_idade: "35–39", sexo: "feminino", resultado: resultado2_2("encaminhar_eletivo", "moderado", "1.1.3"), decisao_ponta: null, status: "concluido", revisor: REVISOR_OUTRO_2_2 },
+];
+
+export const CASOS_PAINEL_2_2: CasoPainel2_2[] = CASOS_BASE_2_2.map((c) => ({
+  ...c,
+  espera_dias: esperaDias2_2(c.data_triagem),
+}));
+
+export function buscarCasosPainel2_2(): Promise<CasoPainel2_2[]> {
+  return esperar(cenarioFila2_2 === "vazia" ? [] : CASOS_PAINEL_2_2);
+}
+
+export function buscarCasoPainel2_2(id: string): Promise<CasoPainel2_2 | null> {
+  return esperar(CASOS_PAINEL_2_2.find((c) => c.id === id) ?? null);
+}
