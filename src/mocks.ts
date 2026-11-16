@@ -1363,3 +1363,195 @@ export async function salvarConfiguracoes1_17(
   configuracoes1_17 = { ...nova, hora_manual: null };
   return buscarConfiguracoes1_17();
 }
+
+// ── Tela 2.5 ──
+// Aparelhos (painel, perfil equipe). Os mesmos SA-0004, SA-0009 e SA-0017 da 2.2 e dos alertas da 2.4.
+// SA-0017 repete os números da 1.13 (cenário sem atenção). O "servidor" já devolve os motivos de
+// atenção de cada aparelho, com o campo a que se referem; a tela só ordena e exibe.
+// Taxas da semana: null = nenhuma triagem na semana. Bateria e armazenamento: 0–1.
+// O painel não controla o aparelho: só pede verificação técnica remota, que segue na próxima sincronização.
+// Variações pela URL: ?aparelhos=vazio (nenhum aparelho cadastrado)
+export const cenarioAparelhos2_5: "normal" | "vazio" =
+  new URLSearchParams(window.location.search).get("aparelhos") === "vazio" ? "vazio" : "normal";
+
+export type CampoAparelho2_5 =
+  | "sincronizacao"
+  | "pendentes"
+  | "bateria"
+  | "armazenamento"
+  | "reprovacao"
+  | "indeterminado"
+  | "incidentes"
+  | "modelo";
+
+export type TipoEventoAparelho2_5 = "instalacao" | "reversao" | "incidente" | "verificacao";
+
+export interface EventoAparelho2_5 {
+  id: string;
+  tipo: TipoEventoAparelho2_5;
+  data: string; // ISO
+  descricao: string;
+}
+
+export interface Aparelho2_5 {
+  id: string; // rota /painel/aparelhos/:aparelhoId
+  unidade: string;
+  modelo_versao: string;
+  ultima_sincronizacao: string; // ISO
+  pendentes: number;
+  bateria: number; // 0–1
+  armazenamento: number; // 0–1, parte usada
+  taxa_reprovacao_semana: number | null; // 0–1
+  taxa_indeterminado_semana: number | null; // 0–1
+  incidentes_abertos: number;
+  atencao: { campo: CampoAparelho2_5; motivo: string }[]; // vazio = sem atenção
+  eventos: EventoAparelho2_5[]; // mais recente primeiro
+  verificacao_solicitada_em: string | null; // ISO; null = nenhuma verificação aguardando
+}
+
+export const CONSULTADO_EM_2_5 = `${HOJE_MOCK}T10:32:00`;
+
+const APARELHOS_2_5: Aparelho2_5[] = [
+  {
+    id: "SA-0017",
+    unidade: "UBS Jardim das Flores",
+    modelo_versao: "1.2.0",
+    ultima_sincronizacao: `${HOJE_MOCK}T10:15:00`,
+    pendentes: TRIAGENS_MOCK.filter((t) => t.sync === "aguardando").length,
+    bateria: 0.82,
+    armazenamento: 41.3 / 128,
+    taxa_reprovacao_semana: 0.18,
+    taxa_indeterminado_semana: 0.11,
+    incidentes_abertos: 0,
+    atencao: [],
+    eventos: [
+      { id: "ev-0017-2", tipo: "instalacao", data: "2026-10-28T14:05:00", descricao: "Modelo 1.2.0 instalado pelo administrador da unidade; verificação de integridade concluída." },
+      { id: "ev-0017-1", tipo: "instalacao", data: "2026-06-02T09:30:00", descricao: "Modelo 1.1.3 instalado na entrega do aparelho." },
+    ],
+    verificacao_solicitada_em: null,
+  },
+  {
+    id: "SA-0009",
+    unidade: "UBS Vila Nova",
+    modelo_versao: "1.2.0",
+    ultima_sincronizacao: `${HOJE_MOCK}T08:50:00`,
+    pendentes: 3,
+    bateria: 0.67,
+    armazenamento: 0.48,
+    taxa_reprovacao_semana: 8 / 30, // mesmas contagens do alerta de 7 dias da 2.4
+    taxa_indeterminado_semana: 2 / 24,
+    incidentes_abertos: 1,
+    atencao: [
+      { campo: "reprovacao", motivo: "Capturas reprovadas acima do limiar na semana. Causa comum: lente suja ou ponteira desgastada." },
+      { campo: "incidentes", motivo: "Incidente aberto: imagens desfocadas relatadas pela unidade." },
+    ],
+    eventos: [
+      { id: "ev-0009-3", tipo: "incidente", data: "2026-11-06T11:20:00", descricao: "Operadora relatou imagens desfocadas em várias capturas seguidas. Aberto, em análise pela equipe." },
+      { id: "ev-0009-2", tipo: "instalacao", data: "2026-11-02T16:20:00", descricao: "Modelo 1.2.0 instalado pelo administrador da unidade; verificação de integridade concluída." },
+      { id: "ev-0009-1", tipo: "instalacao", data: "2026-05-18T10:00:00", descricao: "Modelo 1.1.3 instalado na entrega do aparelho." },
+    ],
+    verificacao_solicitada_em: null,
+  },
+  {
+    id: "SA-0021",
+    unidade: "UBS São José",
+    modelo_versao: "1.1.3",
+    ultima_sincronizacao: `${HOJE_MOCK}T09:05:00`,
+    pendentes: 1,
+    bateria: 0.74,
+    armazenamento: 0.41,
+    taxa_reprovacao_semana: 0.09,
+    taxa_indeterminado_semana: 0.06,
+    incidentes_abertos: 0,
+    atencao: [],
+    eventos: [
+      { id: "ev-0021-4", tipo: "incidente", data: "2026-11-04T11:40:00", descricao: "Lentidão na análise relatada pela unidade. Encerrado após a reversão do modelo." },
+      { id: "ev-0021-3", tipo: "reversao", data: "2026-11-04T11:30:00", descricao: "Modelo revertido de 1.2.0 para 1.1.3 pelo administrador da unidade." },
+      { id: "ev-0021-2", tipo: "instalacao", data: "2026-11-03T09:00:00", descricao: "Modelo 1.2.0 instalado pelo administrador da unidade; verificação de integridade concluída." },
+      { id: "ev-0021-1", tipo: "instalacao", data: "2026-07-07T13:15:00", descricao: "Modelo 1.1.3 instalado na entrega do aparelho." },
+    ],
+    verificacao_solicitada_em: null,
+  },
+  {
+    id: "SA-0012",
+    unidade: "UBS Parque das Árvores",
+    modelo_versao: "1.2.0",
+    ultima_sincronizacao: "2026-11-07T16:45:00",
+    pendentes: 14,
+    bateria: 0.09,
+    armazenamento: 0.88,
+    taxa_reprovacao_semana: 3 / 22,
+    taxa_indeterminado_semana: 2 / 19,
+    incidentes_abertos: 0,
+    atencao: [
+      { campo: "sincronizacao", motivo: "Sem sincronizar com o painel há 3 dias, com triagens pendentes." },
+      { campo: "bateria", motivo: "Bateria baixa e fora da tomada." },
+      { campo: "armazenamento", motivo: "Pouco espaço livre de armazenamento." },
+    ],
+    eventos: [
+      { id: "ev-0012-2", tipo: "verificacao", data: "2026-10-15T14:00:00", descricao: "Verificação técnica remota: pacote recebido; dermatoscópio e iluminação dentro do esperado." },
+      { id: "ev-0012-1", tipo: "instalacao", data: "2026-10-01T08:40:00", descricao: "Modelo 1.2.0 instalado na entrega do aparelho." },
+    ],
+    verificacao_solicitada_em: null,
+  },
+  {
+    id: "SA-0004",
+    unidade: "UBS Centro",
+    modelo_versao: "1.2.0",
+    ultima_sincronizacao: `${HOJE_MOCK}T07:30:00`,
+    pendentes: 0,
+    bateria: 0.91,
+    armazenamento: 0.36,
+    taxa_reprovacao_semana: 5 / 41,
+    taxa_indeterminado_semana: 7 / 38,
+    incidentes_abertos: 0,
+    atencao: [
+      { campo: "indeterminado", motivo: "Taxa de indeterminado acima do limiar de investigação. Veja o alerta em Métricas." },
+    ],
+    eventos: [
+      { id: "ev-0004-3", tipo: "instalacao", data: "2026-10-29T10:10:00", descricao: "Modelo 1.2.0 instalado pelo administrador da unidade; verificação de integridade concluída." },
+      { id: "ev-0004-2", tipo: "verificacao", data: "2026-09-25T15:00:00", descricao: "Verificação técnica remota: pacote recebido; iluminação do dermatoscópio abaixo do esperado. Ponteira substituída pela unidade." },
+      { id: "ev-0004-1", tipo: "instalacao", data: "2026-04-20T09:00:00", descricao: "Modelo 1.1.3 instalado na entrega do aparelho." },
+    ],
+    verificacao_solicitada_em: null,
+  },
+  {
+    id: "SA-0023",
+    unidade: "UBS Boa Esperança",
+    modelo_versao: "1.2.0",
+    ultima_sincronizacao: `${HOJE_MOCK}T10:02:00`,
+    pendentes: 0,
+    bateria: 1,
+    armazenamento: 0.05,
+    taxa_reprovacao_semana: null,
+    taxa_indeterminado_semana: null,
+    incidentes_abertos: 0,
+    atencao: [],
+    eventos: [],
+    verificacao_solicitada_em: null,
+  },
+];
+
+const copiarAparelho2_5 = (a: Aparelho2_5): Aparelho2_5 => ({
+  ...a,
+  atencao: a.atencao.map((m) => ({ ...m })),
+  eventos: a.eventos.map((e) => ({ ...e })),
+});
+
+export function buscarAparelhos2_5(): Promise<Aparelho2_5[]> {
+  return esperar(cenarioAparelhos2_5 === "vazio" ? [] : APARELHOS_2_5.map(copiarAparelho2_5));
+}
+
+// null = aparelho não encontrado
+export function buscarAparelho2_5(id: string): Promise<Aparelho2_5 | null> {
+  const a = cenarioAparelhos2_5 === "vazio" ? undefined : APARELHOS_2_5.find((x) => x.id === id);
+  return esperar(a ? copiarAparelho2_5(a) : null);
+}
+
+export function solicitarVerificacao2_5(id: string): Promise<{ solicitada_em: string }> {
+  const a = APARELHOS_2_5.find((x) => x.id === id);
+  if (!a) throw new Error(`solicitarVerificacao2_5: aparelho ${id} não encontrado`);
+  const d = new Date();
+  a.verificacao_solicitada_em ??= `${HOJE_MOCK}T${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}:00`;
+  return esperar({ solicitada_em: a.verificacao_solicitada_em });
+}
