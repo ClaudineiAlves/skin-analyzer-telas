@@ -22,6 +22,7 @@ interface Sessao {
   resultado: Resultado | null;
   reprovacoesSeguidas: number;
   usuarioPainel: UsuarioPainel | null;
+  tokenPainel: string | null;
 }
 
 interface SessaoCtx extends Sessao {
@@ -37,6 +38,7 @@ const VAZIA: Sessao = {
   resultado: null,
   reprovacoesSeguidas: 0,
   usuarioPainel: null,
+  tokenPainel: null,
 };
 
 const Ctx = createContext<SessaoCtx | null>(null);
@@ -47,8 +49,8 @@ export function SessaoProvider({ children }: { children: ReactNode }) {
     () => ({
       ...s,
       atualizar: (parcial) => setS((atual) => ({ ...atual, ...parcial })),
-      sair: () => setS((atual) => ({ ...VAZIA, usuarioPainel: atual.usuarioPainel })),
-      sairPainel: () => setS((atual) => ({ ...atual, usuarioPainel: null })),
+      sair: () => setS((atual) => ({ ...VAZIA, usuarioPainel: atual.usuarioPainel, tokenPainel: atual.tokenPainel })),
+      sairPainel: () => setS((atual) => ({ ...atual, usuarioPainel: null, tokenPainel: null })),
     }),
     [s],
   );
