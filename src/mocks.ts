@@ -242,3 +242,27 @@ export function buscarTriagensDeHoje(operadorId: string): Promise<Triagem[]> {
   if (cenarioInicio === "vazia") return esperar([]);
   return esperar(TRIAGENS_MOCK.filter((t) => t.operador_id === operadorId && t.data.startsWith(HOJE_MOCK)));
 }
+
+// ── Dados do atendimento (1.4) ─────────────────────────────────────────
+// Variações pela URL, além de ?cenario=:
+// ?atendimento=repetido (código sugerido já tem triagem hoje) · ?metadata=nao (modelo sem idade/sexo)
+export const CODIGO_ATENDIMENTO_PREFIXO = "A-";
+export const CODIGO_ATENDIMENTO_DIGITOS = 4;
+// Última faixa de idade aceita pelo modelo ("85 anos ou mais"); as anteriores vêm de LIMITES.faixaIdadeAnos.
+export const IDADE_ULTIMA_FAIXA_ANOS = 85;
+
+const parametrosAtendimento = new URLSearchParams(window.location.search);
+const atendimentoRepetido = parametrosAtendimento.get("atendimento") === "repetido";
+const modeloSemMetadata = parametrosAtendimento.get("metadata") === "nao";
+
+export function buscarProximoCodigoAtendimento(): Promise<string> {
+  return esperar(atendimentoRepetido ? "A-0423" : "A-0426");
+}
+
+export function buscarModeloUsaMetadata(): Promise<boolean> {
+  return buscarSaude().then((s) => s.modelo_usa_metadata && !modeloSemMetadata);
+}
+
+export function codigoTemTriagemHoje(codigo: string): Promise<boolean> {
+  return esperar(TRIAGENS_MOCK.some((t) => t.codigo === codigo && t.data.startsWith(HOJE_MOCK)));
+}
