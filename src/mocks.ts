@@ -426,3 +426,49 @@ export function capturarLesao(reprovacoesSeguidas: number): Promise<ResultadoCap
       : { aprovada: true, url: CAPTURA_IMAGEM_MOCK_URL },
   );
 }
+
+// ── Tela 1.14 ──────────────────────────────────────────────────────────
+// Cadastro de usuários do aparelho (admin). Lista própria do "servidor" em memória, semeada a
+// partir de USUARIOS: some ao recarregar e ainda não reflete no login (1.2).
+export interface UsuarioCadastro1_14 extends Usuario {
+  registro: string | null; // registro profissional, opcional
+}
+
+export type NovoUsuario1_14 = Pick<UsuarioCadastro1_14, "nome" | "funcao" | "perfil" | "registro">;
+
+export type RespostaDesativar1_14 = { status: "ok" } | { status: "ultimo_admin" };
+
+const usuariosCadastro1_14: UsuarioCadastro1_14[] = [
+  ...USUARIOS.map((u) => ({ ...u, registro: u.funcao === "medico" ? "CRM-SP 000000" : null })),
+  { id: "u-5", nome: "Carla Mendes", funcao: "tecnico_enfermagem", perfil: "operador", ativo: false, registro: null },
+];
+
+// PIN temporário: o "servidor" gera e devolve uma única vez.
+const gerarPinTemporario1_14 = () =>
+  Array.from(crypto.getRandomValues(new Uint32Array(LIMITES.pinDigitos)), (n) => String(n % 10)).join("");
+
+export function buscarUsuariosCadastro1_14(): Promise<UsuarioCadastro1_14[]> {
+  return esperar(usuariosCadastro1_14.map((u) => ({ ...u })));
+}
+
+export function criarUsuario1_14(
+  novo: NovoUsuario1_14,
+): Promise<{ usuario: UsuarioCadastro1_14; pinTemporario: string }> {
+  const usuario: UsuarioCadastro1_14 = { ...novo, id: `u-${crypto.randomUUID()}`, ativo: true };
+  usuariosCadastro1_14.push(usuario);
+  return esperar({ usuario: { ...usuario }, pinTemporario: gerarPinTemporario1_14() });
+}
+
+export function desativarUsuario1_14(usuarioId: string): Promise<RespostaDesativar1_14> {
+  const alvo = usuariosCadastro1_14.find((u) => u.id === usuarioId);
+  const adminsAtivos = usuariosCadastro1_14.filter((u) => u.ativo && u.perfil === "administrador").length;
+  if (alvo?.ativo && alvo.perfil === "administrador" && adminsAtivos <= 1) {
+    return esperar({ status: "ultimo_admin" });
+  }
+  if (alvo) alvo.ativo = false;
+  return esperar({ status: "ok" });
+}
+
+export function redefinirPin1_14(_usuarioId: string): Promise<{ pinTemporario: string }> {
+  return esperar({ pinTemporario: gerarPinTemporario1_14() });
+}
