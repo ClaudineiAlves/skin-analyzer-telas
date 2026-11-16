@@ -378,3 +378,51 @@ export function buscarStatusAparelho1_13(): Promise<StatusAparelho1_13> {
     },
   });
 }
+
+// ── Tela 1.5 ── Captura ────────────────────────────────────────────────
+// Leitura ao vivo do dermatoscópio. "contato" = ponteira encostada na pele (só orienta o rodapé).
+export interface QualidadeCaptura {
+  contato: boolean;
+  foco: boolean;
+  centro: boolean;
+  luz: boolean;
+}
+
+// Sequência simulada ao abrir a tela: encosta → centraliza → firma → pronto (e fica pronto).
+const QUALIDADE_CAPTURA_SEQUENCIA: { leitura: QualidadeCaptura; duracaoMs: number }[] = [
+  { leitura: { contato: false, foco: false, centro: false, luz: false }, duracaoMs: 2000 },
+  { leitura: { contato: true, foco: false, centro: false, luz: true }, duracaoMs: 2000 },
+  { leitura: { contato: true, foco: false, centro: true, luz: true }, duracaoMs: 1500 },
+  { leitura: { contato: true, foco: true, centro: true, luz: true }, duracaoMs: 0 },
+];
+
+export function observarQualidadeCaptura(aoLer: (q: QualidadeCaptura) => void): () => void {
+  let timer: number | undefined;
+  const passo = (i: number) => {
+    const { leitura, duracaoMs } = QUALIDADE_CAPTURA_SEQUENCIA[i];
+    aoLer(leitura);
+    if (i < QUALIDADE_CAPTURA_SEQUENCIA.length - 1) timer = window.setTimeout(() => passo(i + 1), duracaoMs);
+  };
+  passo(0);
+  return () => window.clearTimeout(timer);
+}
+
+// Imagem capturada de mentira: fundo neutro com uma mancha no centro.
+export const CAPTURA_IMAGEM_MOCK_URL =
+  "data:image/svg+xml," +
+  encodeURIComponent(
+    '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 400"><rect width="400" height="400" fill="#c9b9a6"/><ellipse cx="200" cy="200" rx="70" ry="58" fill="#6b4a33"/></svg>',
+  );
+
+export type ResultadoCaptura =
+  | { aprovada: true; url: string }
+  | { aprovada: false; url: string; motivo: string; codigo: string };
+
+// Regra do mock: a 1ª tentativa do atendimento é reprovada (→ 1.6) e a seguinte aprovada (→ 1.7).
+export function capturarLesao(reprovacoesSeguidas: number): Promise<ResultadoCaptura> {
+  return esperar(
+    reprovacoesSeguidas === 0
+      ? { aprovada: false, url: CAPTURA_IMAGEM_MOCK_URL, motivo: "A imagem ficou sem foco.", codigo: "QC-FOCO" }
+      : { aprovada: true, url: CAPTURA_IMAGEM_MOCK_URL },
+  );
+}
