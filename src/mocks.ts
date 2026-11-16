@@ -1246,3 +1246,120 @@ const montarMetricas2_4 = (dias: PeriodoDias2_4): Metricas2_4 => {
 export function buscarMetricas2_4(dias: PeriodoDias2_4): Promise<Metricas2_4> {
   return esperar(montarMetricas2_4(dias));
 }
+
+// ── Tela 1.17 ──
+// Configurações (admin). O que o administrador salva fica no "servidor" em memória (some ao recarregar).
+// Relógio e sincronização vêm do mesmo status da 1.13; o modelo em uso, da situação da 1.16
+// (assim as versões batem depois de uma instalação ou reversão).
+// Variações pela URL:
+// ?status-aparelho=atencao (via 1.13: relógio 7 min adiantado em data/hora manual, sincronização atrasada)
+// ?rede=desconectada (rede sem conexão)
+export const cenarioRede1_17: "conectada" | "desconectada" =
+  new URLSearchParams(window.location.search).get("rede") === "desconectada" ? "desconectada" : "conectada";
+
+// Pendente de mover para config.ts (LIMITES); ver relatório da tela.
+export const OPCOES_BLOQUEIO_MIN_1_17 = [1, 2, 3, 4, 5] as const;
+// O "servidor" marca atenção no relógio a partir desta diferença com a rede.
+const TOLERANCIA_RELOGIO_MIN_1_17 = 2;
+
+export type ModoDataHora1_17 = "automatica" | "manual";
+export type TipoRede1_17 = "wifi" | "cabo";
+
+export interface Configuracoes1_17 {
+  data_hora: ModoDataHora1_17;
+  hora_manual: string | null; // ISO; só vale em "manual", aplicada ao salvar
+  bloqueio_min: number;
+  descarte_ao_vencer: boolean;
+  impressao: boolean;
+  pendrive: boolean;
+  bipe_captura: boolean;
+}
+
+export interface InfoConfiguracoes1_17 {
+  rede: { tipo: TipoRede1_17; nome: string; conectada: boolean };
+  sincronizacao: { ultima: string; pendentes: number; atencao: string | null };
+  relogio: { hora_aparelho: string; diferenca_rede_min: number; atencao: string | null };
+  unidade: { nome: string; codigo: string };
+  sobre: {
+    aparelho: string;
+    software_versao: string;
+    modelo: { nome: string; versao: string };
+    licencas: string[];
+    suporte: { telefone: string; email: string; horario: string };
+  };
+}
+
+const LICENCAS_1_17 = [
+  "Software do aparelho: licença de uso para a unidade (exemplo)",
+  "Modelo de triagem: licença de pesquisa (exemplo)",
+  "React e React Router: licença MIT",
+];
+
+const SUPORTE_1_17 = {
+  telefone: "0800 000 0000",
+  email: "suporte@exemplo.invalid",
+  horario: "Segunda a sexta, das 8h às 18h",
+};
+
+let configuracoes1_17: Configuracoes1_17 = {
+  data_hora: cenarioStatusAparelho1_13 === "atencao" ? "manual" : "automatica",
+  hora_manual: null,
+  bloqueio_min: TEMPOS.inatividadeMs / 60_000,
+  descarte_ao_vencer: false,
+  impressao: true,
+  pendrive: false,
+  bipe_captura: true,
+};
+// null = relógio como a 1.13 informa; número = diferença depois de um ajuste salvo aqui.
+let diferencaRelogioAjustada1_17: number | null = null;
+
+const msMinuto1_17 = 60_000;
+
+const textoAtencaoRelogio1_17 = (dif: number) =>
+  `Relógio ${Math.abs(dif)} ${Math.abs(dif) === 1 ? "minuto" : "minutos"} ${dif > 0 ? "adiantado" : "atrasado"} em relação à rede. Use data e hora automática ou ajuste a hora.`;
+
+export async function buscarConfiguracoes1_17(): Promise<{ config: Configuracoes1_17; info: InfoConfiguracoes1_17 }> {
+  const [status, modelo] = await Promise.all([buscarStatusAparelho1_13(), buscarSituacaoModelo1_16()]);
+  const horaRede = new Date(status.relogio.hora_aparelho).getTime() - status.relogio.diferenca_rede_min * msMinuto1_17;
+  const dif = diferencaRelogioAjustada1_17 ?? status.relogio.diferenca_rede_min;
+  const relogio =
+    diferencaRelogioAjustada1_17 === null
+      ? status.relogio
+      : {
+          hora_aparelho: new Date(horaRede + dif * msMinuto1_17).toISOString(),
+          diferenca_rede_min: dif,
+          atencao: Math.abs(dif) >= TOLERANCIA_RELOGIO_MIN_1_17 ? textoAtencaoRelogio1_17(dif) : null,
+        };
+  return {
+    config: { ...configuracoes1_17 },
+    info: {
+      rede: {
+        tipo: "wifi",
+        nome: "UBS-JardimDasFlores-Interna",
+        conectada: cenarioRede1_17 === "conectada",
+      },
+      sincronizacao: status.sincronizacao,
+      relogio,
+      unidade: { nome: "UBS Jardim das Flores", codigo: "JF-001" },
+      sobre: {
+        aparelho: "SA-0017",
+        software_versao: "0.9.3",
+        modelo: { nome: modelo.em_uso.nome, versao: modelo.em_uso.versao },
+        licencas: [...LICENCAS_1_17],
+        suporte: { ...SUPORTE_1_17 },
+      },
+    },
+  };
+}
+
+export async function salvarConfiguracoes1_17(
+  nova: Configuracoes1_17,
+): Promise<{ config: Configuracoes1_17; info: InfoConfiguracoes1_17 }> {
+  const { info } = await buscarConfiguracoes1_17();
+  const horaRede = new Date(info.relogio.hora_aparelho).getTime() - info.relogio.diferenca_rede_min * msMinuto1_17;
+  if (nova.data_hora === "automatica") diferencaRelogioAjustada1_17 = 0;
+  else if (nova.hora_manual)
+    diferencaRelogioAjustada1_17 = Math.round((new Date(nova.hora_manual).getTime() - horaRede) / msMinuto1_17);
+  configuracoes1_17 = { ...nova, hora_manual: null };
+  return buscarConfiguracoes1_17();
+}
