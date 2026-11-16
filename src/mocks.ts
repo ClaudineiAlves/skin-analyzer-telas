@@ -898,3 +898,112 @@ export function registrarTriagem1_8(dados: {
   TRIAGENS_MOCK.push(triagem);
   return esperar(undefined);
 }
+
+// ── Tela 1.16 ──
+// Atualização do modelo (admin). O modelo em uso vem do mesmo status da 1.13 até a primeira
+// instalação/reversão; depois fica no "servidor" em memória (some ao recarregar).
+// O aparelho nunca atualiza sozinho: só instala/reverte quando a tela chama instalarModelo1_16.
+// Variações pela URL:
+// ?atualizacao-modelo=falha (a nova versão não passa no teste de verificação → MOD-FUMACA)
+// ?atualizacao-modelo=nenhuma (nenhuma atualização disponível)
+// ?triagem-em-andamento=sim (simula uma triagem aberta: instalar e reverter ficam desabilitados)
+const parametros1_16 = new URLSearchParams(window.location.search);
+const parametroAtualizacao1_16 = parametros1_16.get("atualizacao-modelo");
+export const cenarioAtualizacao1_16: "normal" | "falha" | "nenhuma" =
+  parametroAtualizacao1_16 === "falha" || parametroAtualizacao1_16 === "nenhuma" ? parametroAtualizacao1_16 : "normal";
+export const triagemEmAndamentoTeste1_16 = parametros1_16.get("triagem-em-andamento") === "sim";
+
+export interface VersaoModelo1_16 {
+  nome: string;
+  versao: string;
+}
+
+export interface ModeloEmUso1_16 extends VersaoModelo1_16 {
+  instalado_em: string; // ISO
+}
+
+export interface PacoteModelo1_16 extends VersaoModelo1_16 {
+  mudancas: string[];
+  tipo_mudanca: string;
+}
+
+export interface SituacaoModelo1_16 {
+  em_uso: ModeloEmUso1_16;
+  disponivel: PacoteModelo1_16 | null; // null = nenhuma atualização disponível
+  anterior: VersaoModelo1_16 | null; // null = nenhuma versão anterior guardada
+}
+
+export type EtapaInstalacao1_16 = "integridade" | "teste" | "troca";
+export const ETAPAS_INSTALACAO_1_16: EtapaInstalacao1_16[] = ["integridade", "teste", "troca"];
+export const ETAPA_INSTALACAO_MS_1_16 = 1_500;
+
+export type AcaoModelo1_16 = "instalar" | "reverter";
+
+export type RespostaInstalacao1_16 =
+  | { status: "ok"; versao: VersaoModelo1_16 }
+  | { status: "nao_passou"; etapa: EtapaInstalacao1_16; versao: VersaoModelo1_16; continua_com: VersaoModelo1_16 };
+
+const PACOTE_DISPONIVEL_1_16: PacoteModelo1_16 = {
+  nome: RESULTADO_PRIORITARIO_MOCK.modelo,
+  versao: "1.3.0",
+  mudancas: [
+    "Retreinado com mais imagens de peles com fototipos IV a VI.",
+    "Mesmas classes e mesmas condutas sugeridas da versão em uso.",
+    "Análise mais rápida no aparelho.",
+  ],
+  tipo_mudanca: "Retreino com mais dados (classes e limiar de encaminhamento mantidos)",
+};
+
+// Mesma versão anterior que aparece nas triagens antigas (1.15, 2.2).
+const VERSAO_ANTERIOR_1_16: VersaoModelo1_16 = { nome: RESULTADO_PRIORITARIO_MOCK.modelo, versao: "1.1.3" };
+
+let emUso1_16: ModeloEmUso1_16 | null = null;
+let disponivel1_16: PacoteModelo1_16 | null = cenarioAtualizacao1_16 === "nenhuma" ? null : PACOTE_DISPONIVEL_1_16;
+let anterior1_16: VersaoModelo1_16 | null = VERSAO_ANTERIOR_1_16;
+
+const agoraIso1_16 = () => {
+  const d = new Date();
+  return `${HOJE_MOCK}T${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}:00`;
+};
+
+export async function buscarSituacaoModelo1_16(): Promise<SituacaoModelo1_16> {
+  if (!emUso1_16) {
+    const { modelo } = await buscarStatusAparelho1_13();
+    emUso1_16 = { nome: modelo.nome, versao: modelo.versao, instalado_em: modelo.instalado_em };
+  }
+  return {
+    em_uso: { ...emUso1_16 },
+    disponivel: disponivel1_16 && { ...disponivel1_16, mudancas: [...disponivel1_16.mudancas] },
+    anterior: anterior1_16 && { ...anterior1_16 },
+  };
+}
+
+// Avisa cada etapa ao começar. Só ?atualizacao-modelo=falha reprova, e só a instalação da nova versão.
+export async function instalarModelo1_16(
+  acao: AcaoModelo1_16,
+  aoIniciarEtapa: (etapa: EtapaInstalacao1_16) => void,
+): Promise<RespostaInstalacao1_16> {
+  const { em_uso, disponivel, anterior } = await buscarSituacaoModelo1_16();
+  const alvo = acao === "instalar" ? disponivel : anterior;
+  if (!alvo) throw new Error(`instalarModelo1_16: nada para ${acao}`);
+  const atual: VersaoModelo1_16 = { nome: em_uso.nome, versao: em_uso.versao };
+
+  for (const etapa of ETAPAS_INSTALACAO_1_16) {
+    aoIniciarEtapa(etapa);
+    await esperar(undefined, ETAPA_INSTALACAO_MS_1_16);
+    if (acao === "instalar" && etapa === "teste" && cenarioAtualizacao1_16 === "falha") {
+      return { status: "nao_passou", etapa, versao: { nome: alvo.nome, versao: alvo.versao }, continua_com: atual };
+    }
+  }
+
+  emUso1_16 = { nome: alvo.nome, versao: alvo.versao, instalado_em: agoraIso1_16() };
+  if (acao === "instalar") {
+    anterior1_16 = atual;
+    disponivel1_16 = null;
+  } else {
+    anterior1_16 = null;
+    // A versão revertida volta a ficar disponível para instalar depois.
+    if (atual.versao === PACOTE_DISPONIVEL_1_16.versao) disponivel1_16 = PACOTE_DISPONIVEL_1_16;
+  }
+  return { status: "ok", versao: { nome: alvo.nome, versao: alvo.versao } };
+}
