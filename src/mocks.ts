@@ -266,3 +266,33 @@ export function buscarModeloUsaMetadata(): Promise<boolean> {
 export function codigoTemTriagemHoje(codigo: string): Promise<boolean> {
   return esperar(TRIAGENS_MOCK.some((t) => t.codigo === codigo && t.data.startsWith(HOJE_MOCK)));
 }
+
+// ── Tela 2.1 ──
+// Variações pela URL: ?painel=sessao-expirada (abre 2.1 com o aviso de sessão expirada por inatividade)
+export type CenarioLoginPainel = "normal" | "sessao-expirada";
+
+export const cenarioLoginPainel: CenarioLoginPainel =
+  new URLSearchParams(window.location.search).get("painel") === "sessao-expirada" ? "sessao-expirada" : "normal";
+
+export type ContaPainel = (typeof CONTAS_PAINEL)[number];
+
+export type RespostaCredenciaisPainel = { status: "ok"; desafio: string } | { status: "nao_conferem" };
+export type RespostaCodigoPainel = { status: "ok"; token: string; conta: ContaPainel } | { status: "nao_confere" };
+
+// Desafios de 2º fator pendentes no "servidor" em memória: somem ao recarregar.
+const desafiosPainel = new Map<string, ContaPainel>();
+
+export function verificarCredenciaisPainel(email: string, senha: string): Promise<RespostaCredenciaisPainel> {
+  const conta = CONTAS_PAINEL.find((c) => c.email === email.trim().toLowerCase());
+  if (!conta || senha !== SENHA_PAINEL_MOCK) return esperar({ status: "nao_conferem" });
+  const desafio = `desafio-${crypto.randomUUID()}`;
+  desafiosPainel.set(desafio, conta);
+  return esperar({ status: "ok", desafio });
+}
+
+export function verificarCodigoPainel(desafio: string, codigo: string): Promise<RespostaCodigoPainel> {
+  const conta = desafiosPainel.get(desafio);
+  if (!conta || codigo !== CODIGO_2FA_MOCK) return esperar({ status: "nao_confere" });
+  desafiosPainel.delete(desafio);
+  return esperar({ status: "ok", token: `token-painel-${crypto.randomUUID()}`, conta });
+}
