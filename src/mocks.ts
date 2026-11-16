@@ -296,3 +296,85 @@ export function verificarCodigoPainel(desafio: string, codigo: string): Promise<
   desafiosPainel.delete(desafio);
   return esperar({ status: "ok", token: `token-painel-${crypto.randomUUID()}`, conta });
 }
+
+// ── Tela 1.13 ──────────────────────────────────────────────────────────
+// Status do aparelho (admin). O "servidor" já devolve o motivo de atenção de cada cartão
+// (null = sem atenção); a tela não decide limites.
+// Variações pela URL, além de ?cenario= (integridade → Modelo; dermatoscopio → Dermatoscópio):
+// ?status-aparelho=atencao → Sincronização, Armazenamento, Bateria e Relógio também em atenção.
+export const cenarioStatusAparelho1_13: "normal" | "atencao" =
+  new URLSearchParams(window.location.search).get("status-aparelho") === "atencao" ? "atencao" : "normal";
+
+export interface StatusAparelho1_13 {
+  consultado_em: string; // ISO
+  modelo: { nome: string; versao: string; instalado_em: string; integro: boolean; atencao: string | null };
+  sincronizacao: { ultima: string; pendentes: number; atencao: string | null };
+  armazenamento: { usado_gb: number; total_gb: number; atencao: string | null };
+  bateria: { nivel: number; na_tomada: boolean; atencao: string | null }; // nivel 0–1
+  dermatoscopio: { conectado: boolean; identificacao: string; atencao: string | null };
+  relogio: { hora_aparelho: string; diferenca_rede_min: number; atencao: string | null };
+  uso: {
+    triagens_hoje: number;
+    triagens_semana: number;
+    taxa_indeterminado: number; // 0–1, na semana
+    taxa_reprovacao: number; // 0–1, capturas reprovadas na semana
+    atencao: string | null;
+  };
+}
+
+export function buscarStatusAparelho1_13(): Promise<StatusAparelho1_13> {
+  const atencao = cenarioStatusAparelho1_13 === "atencao";
+  const integro = cenario !== "integridade";
+  const dermatoscopio = cenario !== "dermatoscopio";
+  return esperar({
+    consultado_em: `${HOJE_MOCK}T10:32:00`,
+    modelo: {
+      nome: RESULTADO_PRIORITARIO_MOCK.modelo,
+      versao: RESULTADO_PRIORITARIO_MOCK.modelo_versao,
+      instalado_em: "2026-10-28T14:05:00",
+      integro,
+      atencao: integro
+        ? null
+        : "A verificação de integridade não confirmou o arquivo do modelo instalado. Reinstale a versão em Atualização do modelo.",
+    },
+    sincronizacao: {
+      ultima: atencao ? "2026-11-08T17:40:00" : `${HOJE_MOCK}T10:15:00`,
+      pendentes: TRIAGENS_MOCK.filter((t) => t.sync === "aguardando").length,
+      atencao: atencao
+        ? "Sem sincronizar com o painel há 2 dias. Confira a conexão de rede em Configurações."
+        : null,
+    },
+    armazenamento: {
+      usado_gb: atencao ? 119.4 : 41.3,
+      total_gb: 128,
+      atencao: atencao
+        ? "Resta pouco espaço livre. Sincronize as triagens pendentes; se continuar, fale com o suporte técnico."
+        : null,
+    },
+    bateria: {
+      nivel: atencao ? 0.14 : 0.82,
+      na_tomada: !atencao,
+      atencao: atencao ? "Bateria baixa e fora da tomada. Conecte o carregador." : null,
+    },
+    dermatoscopio: {
+      conectado: dermatoscopio,
+      identificacao: "Dermatoscópio de exemplo · série EX-0417",
+      atencao: dermatoscopio ? null : "Dermatoscópio não conectado. Confira o cabo USB e reconecte o aparelho.",
+    },
+    relogio: {
+      hora_aparelho: `${HOJE_MOCK}T10:32:00`,
+      diferenca_rede_min: atencao ? 7 : 0,
+      atencao: atencao
+        ? "Relógio 7 minutos adiantado em relação à rede. Ajuste em Configurações para que as datas das triagens fiquem corretas."
+        : null,
+    },
+    uso: {
+      triagens_hoje: TRIAGENS_MOCK.filter((t) => t.data.startsWith(HOJE_MOCK)).length,
+      triagens_semana: 27,
+      taxa_indeterminado: 0.11,
+      taxa_reprovacao: 0.18,
+      atencao:
+        "Taxa de capturas reprovadas subiu nesta semana. Causa comum: lente suja ou ponteira desgastada.",
+    },
+  });
+}
