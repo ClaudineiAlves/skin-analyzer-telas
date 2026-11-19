@@ -749,6 +749,7 @@ const S: Record<string, CSSProperties> = {
   tela: { display: "grid", gap: "calc(var(--espaco) * 2)" },
   nav: {
     display: "flex",
+    flexWrap: "wrap",
     gap: "var(--espaco)",
     borderBottom: "1px solid var(--cor-borda)",
   },
@@ -926,7 +927,7 @@ const S: Record<string, CSSProperties> = {
     margin: 0,
     padding: 0,
     display: "grid",
-    gridTemplateColumns: "repeat(auto-fill, minmax(260px, 1fr))",
+    gridTemplateColumns: "repeat(auto-fill, minmax(min(260px, 100%), 1fr))",
     gap: "var(--espaco)",
   },
   itemChecklist: {

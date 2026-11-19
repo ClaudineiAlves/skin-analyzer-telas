@@ -268,57 +268,59 @@ export default function Tela() {
           Carregando usuários…
         </p>
       ) : (
-        <table style={S.tabela}>
-          <thead>
-            <tr>
-              <th style={S.th}>Nome</th>
-              <th style={S.th}>Função</th>
-              <th style={S.th}>Perfil</th>
-              <th style={S.th}>Situação</th>
-              <th style={S.th}>
-                <span style={S.somenteLeitor}>Ações</span>
-              </th>
-            </tr>
-          </thead>
-          <tbody>
-            {usuarios.map((u) => (
-              <tr key={u.id} style={u.ativo ? undefined : S.linhaDesativada}>
-                <td style={{ ...S.td, fontWeight: 600 }}>
-                  {u.nome}
-                  {u.id === usuario.id && <span style={S.secundario}> (você)</span>}
-                </td>
-                <td style={S.td}>
-                  {ROTULO_FUNCAO[u.funcao]}
-                  {u.registro && <span style={S.registro}>{u.registro}</span>}
-                </td>
-                <td style={S.td}>{ROTULO_PERFIL[u.perfil]}</td>
-                <td style={S.td}>
-                  {u.ativo ? (
-                    <span>
-                      <span aria-hidden="true">● </span>Ativo
-                    </span>
-                  ) : (
-                    <span style={S.secundario}>
-                      <span aria-hidden="true">○ </span>Desativado
-                    </span>
-                  )}
-                </td>
-                <td style={{ ...S.td, ...S.tdAcoes }}>
-                  {u.ativo && (
-                    <div style={S.acoes}>
-                      <Botao variante="secundario" onClick={() => setConfirmacao({ tipo: "redefinir", usuario: u })}>
-                        Redefinir PIN
-                      </Botao>
-                      <Botao variante="secundario" onClick={() => pedirDesativar(u)}>
-                        Desativar
-                      </Botao>
-                    </div>
-                  )}
-                </td>
+        <div style={S.rolagem}>
+          <table style={S.tabela}>
+            <thead>
+              <tr>
+                <th style={S.th}>Nome</th>
+                <th style={S.th}>Função</th>
+                <th style={S.th}>Perfil</th>
+                <th style={S.th}>Situação</th>
+                <th style={S.th}>
+                  <span style={S.somenteLeitor}>Ações</span>
+                </th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {usuarios.map((u) => (
+                <tr key={u.id} style={u.ativo ? undefined : S.linhaDesativada}>
+                  <td style={{ ...S.td, fontWeight: 600 }}>
+                    {u.nome}
+                    {u.id === usuario.id && <span style={S.secundario}> (você)</span>}
+                  </td>
+                  <td style={S.td}>
+                    {ROTULO_FUNCAO[u.funcao]}
+                    {u.registro && <span style={S.registro}>{u.registro}</span>}
+                  </td>
+                  <td style={S.td}>{ROTULO_PERFIL[u.perfil]}</td>
+                  <td style={S.td}>
+                    {u.ativo ? (
+                      <span>
+                        <span aria-hidden="true">● </span>Ativo
+                      </span>
+                    ) : (
+                      <span style={S.secundario}>
+                        <span aria-hidden="true">○ </span>Desativado
+                      </span>
+                    )}
+                  </td>
+                  <td style={{ ...S.td, ...S.tdAcoes }}>
+                    {u.ativo && (
+                      <div style={S.acoes}>
+                        <Botao variante="secundario" onClick={() => setConfirmacao({ tipo: "redefinir", usuario: u })}>
+                          Redefinir PIN
+                        </Botao>
+                        <Botao variante="secundario" onClick={() => pedirDesativar(u)}>
+                          Desativar
+                        </Botao>
+                      </div>
+                    )}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       )}
 
       <Dialogo
@@ -369,7 +371,7 @@ export default function Tela() {
 // Estilos locais: estilos.css é compartilhado; ver relatório para migrar para classes.
 const S: Record<string, CSSProperties> = {
   tela: { display: "grid", gap: "calc(var(--espaco) * 3)", alignContent: "start" },
-  cabecalho: { display: "flex", justifyContent: "space-between", alignItems: "center", gap: "calc(var(--espaco) * 2)" },
+  cabecalho: { display: "flex", flexWrap: "wrap", justifyContent: "space-between", alignItems: "center", gap: "calc(var(--espaco) * 2)" },
   titulo: { fontSize: "var(--fonte-titulo)", lineHeight: 1.2 },
   secundario: { color: "var(--cor-secundario)", fontWeight: 400 },
   aviso: {
@@ -378,6 +380,9 @@ const S: Record<string, CSSProperties> = {
     borderLeft: "4px solid var(--cor-grafite)",
     borderRadius: "var(--raio)",
   },
+  // Em tela estreita a tabela rola na horizontal, sem empurrar a página.
+  // relative: segura os textos só-para-leitor (absolute) dentro da rolagem.
+  rolagem: { position: "relative", overflowX: "auto" },
   tabela: {
     width: "100%",
     borderCollapse: "collapse",
@@ -425,11 +430,12 @@ const S: Record<string, CSSProperties> = {
   rodapeForm: { display: "grid", gap: "var(--espaco)", maxWidth: 720 },
   telaPin: { display: "grid", gap: "calc(var(--espaco) * 3)", justifyItems: "center", textAlign: "center", paddingTop: "calc(var(--espaco) * 4)" },
   pin: {
-    fontSize: 56,
+    // Encolhe só em tela estreita; no aparelho continua 56 px.
+    fontSize: "clamp(32px, 10vw, 56px)",
     fontWeight: 700,
     letterSpacing: "0.3em",
     fontVariantNumeric: "tabular-nums",
-    padding: "calc(var(--espaco) * 2) calc(var(--espaco) * 4)",
+    padding: "calc(var(--espaco) * 2) clamp(var(--espaco), 4vw, calc(var(--espaco) * 4))",
     background: "var(--cor-branco)",
     border: "3px solid var(--cor-grafite)",
     borderRadius: "var(--raio)",

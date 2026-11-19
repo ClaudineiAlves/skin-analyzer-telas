@@ -324,7 +324,7 @@ const S: Record<string, CSSProperties> = {
   faixa: { position: "sticky", top: 0, zIndex: 1 },
   colunas: {
     display: "grid",
-    gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))",
+    gridTemplateColumns: "repeat(auto-fit, minmax(min(320px, 100%), 1fr))",
     gap: "calc(var(--espaco) * 3)",
     alignItems: "start",
   },
@@ -344,7 +344,8 @@ const S: Record<string, CSSProperties> = {
     display: "grid",
     gap: "calc(var(--espaco) * 2)",
     alignContent: "start",
-    padding: "calc(var(--espaco) * 3)",
+    // 24 px no desktop; encolhe até 16 px em celular pequeno.
+    padding: "clamp(calc(var(--espaco) * 2), 4vw, calc(var(--espaco) * 3))",
     background: "var(--cor-branco)",
     border: "1px solid var(--cor-borda)",
     borderRadius: "var(--raio)",
@@ -383,7 +384,8 @@ const S: Record<string, CSSProperties> = {
   campo: { display: "grid", gap: 4, justifyItems: "start" },
   select: {
     minHeight: "var(--toque)",
-    minWidth: 320,
+    minWidth: "min(320px, 100%)",
+    maxWidth: "100%",
     padding: "0 var(--espaco)",
     font: "inherit",
     color: "var(--cor-grafite)",

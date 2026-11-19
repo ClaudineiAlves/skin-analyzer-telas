@@ -9,7 +9,7 @@ import {
   type MotivoReprovacao1_6,
 } from "../mocks";
 import { useSessao } from "../sessao";
-import { Botao } from "../ui";
+import { Botao, useTelaEstreita } from "../ui";
 
 const ORIENTACAO_LUZ = "Confira se a ponteira está encostada na pele e se a lente está limpa.";
 
@@ -45,6 +45,7 @@ export default function Tela() {
   const { usuario, atendimento, capturaUrl, reprovacoesSeguidas, atualizar } = useSessao();
   const [captura, setCaptura] = useState<CapturaReprovada1_6 | null>(null);
   const [encerrando, setEncerrando] = useState(false);
+  const estreita = useTelaEstreita();
 
   useEffect(() => {
     if (!codigoRecebido) return;
@@ -71,9 +72,9 @@ export default function Tela() {
   };
 
   return (
-    <div style={S.tela}>
-      <div style={S.colunas}>
-        <section style={S.imagem} aria-label="Imagem capturada, com a área do problema destacada">
+    <div style={{ ...S.tela, ...(estreita ? S.telaEstreita : null) }}>
+      <div style={{ ...S.colunas, ...(estreita ? S.umaColuna : null) }}>
+        <section style={{ ...S.imagem, ...(estreita ? S.imagemEstreita : null) }} aria-label="Imagem capturada, com a área do problema destacada">
           {captura && (
             <>
               <img src={captura.imagem_url} alt="" style={S.foto} />
@@ -110,7 +111,7 @@ export default function Tela() {
         )}
       </div>
 
-      <footer style={S.rodape}>
+      <footer style={{ ...S.rodape, ...(estreita ? S.rodapeEstreito : null) }}>
         <p>Imagem assim não é analisada: o resultado não seria confiável.</p>
         {captura && <p style={S.codigo}>{captura.codigo}</p>}
       </footer>
@@ -161,6 +162,11 @@ const legenda: CSSProperties = {
 };
 
 const S: Record<string, CSSProperties> = {
+  // Celular: imagem ocupa a largura e as colunas empilham.
+  telaEstreita: { paddingBottom: ALTURA_RODAPE * 2 },
+  umaColuna: { gridTemplateColumns: "minmax(0, 1fr)", gap: "calc(var(--espaco) * 2)" },
+  imagemEstreita: { width: "100%", height: "auto", aspectRatio: "1 / 1" },
+  rodapeEstreito: { flexWrap: "wrap", gap: "var(--espaco) calc(var(--espaco) * 2)", padding: "var(--espaco) calc(var(--espaco) * 2)" },
   tela: { maxWidth: 1232, margin: "0 auto", paddingBottom: ALTURA_RODAPE },
   colunas: {
     display: "grid",

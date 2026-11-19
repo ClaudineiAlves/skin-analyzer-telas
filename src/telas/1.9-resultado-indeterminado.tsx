@@ -17,6 +17,7 @@ import {
   FaixaTriagem,
   Logo,
   MensagemProblema,
+  useTelaEstreita,
 } from "../ui";
 
 const DECISOES: { valor: DecisaoProfissional1_8; rotulo: string }[] = [
@@ -72,6 +73,7 @@ export default function Tela() {
   const [estado, setEstado] = useState<Estado>("resultado");
   const [descartar, setDescartar] = useState(false);
   const [exportar, setExportar] = useState(false);
+  const estreita = useTelaEstreita();
 
   useEffect(() => {
     if (atendimento && resultado)
@@ -139,10 +141,10 @@ export default function Tela() {
   };
 
   return (
-    <div style={S.tela}>
-      <div style={S.colunas}>
-        <section style={S.esquerda} aria-label="Imagem analisada">
-          <div style={S.moldura}>
+    <div style={{ ...S.tela, ...(estreita ? S.telaEstreita : null) }}>
+      <div style={{ ...S.colunas, ...(estreita ? S.umaColuna : null) }}>
+        <section style={{ ...S.esquerda, ...(estreita ? S.esquerdaEstreita : null) }} aria-label="Imagem analisada">
+          <div style={{ ...S.moldura, ...(estreita ? S.molduraEstreita : null) }}>
             {capturaUrl ? (
               <img
                 src={capturaUrl}
@@ -188,7 +190,7 @@ export default function Tela() {
             <div
               role="radiogroup"
               aria-labelledby="titulo-decisao"
-              style={S.opcoes}
+              style={{ ...S.opcoes, ...(estreita ? S.opcoesEstreitas : null) }}
             >
               {DECISOES.map((d) => {
                 const marcada = decisao === d.valor;
@@ -215,7 +217,7 @@ export default function Tela() {
         </section>
       </div>
 
-      <div style={S.faixa}>
+      <div style={{ ...S.faixa, ...(estreita ? S.faixaEstreita : null) }}>
         <FaixaTriagem aviso={resultado.aviso} />
       </div>
 
@@ -232,8 +234,8 @@ export default function Tela() {
         </section>
       )}
 
-      <footer style={S.rodape}>
-        <div style={S.rodapeGrupo}>
+      <footer style={{ ...S.rodape, ...(estreita ? S.rodapeEstreito : null) }}>
+        <div style={{ ...S.rodapeGrupo, ...S.quebraLinha }}>
           <Botao
             variante="secundario"
             onClick={() => setDescartar(true)}
@@ -251,7 +253,7 @@ export default function Tela() {
             Exportar
           </Botao>
         </div>
-        <div style={S.rodapeGrupo}>
+        <div style={{ ...S.rodapeGrupo, ...S.quebraLinha }}>
           <Botao
             variante="texto"
             onClick={() => navigate("/triagem/detalhes")}
@@ -260,7 +262,7 @@ export default function Tela() {
           >
             Ver detalhes ›
           </Botao>
-          <Botao onClick={salvar} disabled={ocupado} style={S.salvar}>
+          <Botao onClick={salvar} disabled={ocupado} style={{ ...S.salvar, ...(estreita ? S.salvarEstreito : null) }}>
             {estado === "salvando" ? "Salvando…" : "SALVAR"}
           </Botao>
         </div>
@@ -330,6 +332,7 @@ function PreviaRelatorio({
   fechar: () => void;
 }) {
   const { resultado } = dados;
+  const estreita = useTelaEstreita();
   return (
     <div className="relatorio-1-9__fundo" style={R.fundo}>
       <style>{CSS_IMPRESSAO}</style>
@@ -339,9 +342,9 @@ function PreviaRelatorio({
         aria-labelledby="titulo-relatorio"
         style={R.janela}
       >
-        <div className="relatorio-1-9__acoes" style={R.acoes}>
+        <div className="relatorio-1-9__acoes" style={{ ...R.acoes, ...S.quebraLinha }}>
           <p style={R.acoesTexto}>Prévia do relatório para impressão</p>
-          <div style={S.rodapeGrupo}>
+          <div style={{ ...S.rodapeGrupo, ...S.quebraLinha }}>
             <Botao variante="secundario" onClick={fechar}>
               Fechar
             </Botao>
@@ -349,7 +352,7 @@ function PreviaRelatorio({
           </div>
         </div>
 
-        <article className="relatorio-1-9" style={R.folha}>
+        <article className="relatorio-1-9" style={{ ...R.folha, ...(estreita ? R.folhaEstreita : null) }}>
           <header style={R.cabecalho}>
             <Logo />
             <h1 id="titulo-relatorio" style={R.titulo}>
@@ -365,7 +368,7 @@ function PreviaRelatorio({
             </dl>
           </header>
 
-          <section style={R.corpo}>
+          <section style={{ ...R.corpo, ...(estreita ? S.umaColuna : null) }}>
             <div style={R.imagemBloco}>
               {dados.capturaUrl ? (
                 <img
@@ -419,6 +422,7 @@ function PreviaRelatorio({
 // Estilos locais, no mesmo padrão da 1.8 (estilos.css é compartilhado).
 const ALTURA_RODAPE = 88;
 const LADO_IMAGEM = 300;
+const LADO_MINIATURA = 96;
 
 const S: Record<string, CSSProperties> = {
   tela: {
@@ -553,6 +557,22 @@ const S: Record<string, CSSProperties> = {
     fontSize: 22,
     letterSpacing: "0.04em",
   },
+  // Celular: colunas empilham e o rodapé sai do fluxo fixo, para a faixa de triagem
+  // continuar sempre visível (sticky no pé da tela) sem ficar atrás do rodapé.
+  telaEstreita: { paddingBottom: 0 },
+  umaColuna: { gridTemplateColumns: "minmax(0, 1fr)", gap: "calc(var(--espaco) * 2)" },
+  // Imagem vira miniatura ao lado do local, para a conduta caber acima da faixa.
+  esquerdaEstreita: {
+    gridTemplateColumns: `${LADO_MINIATURA}px minmax(0, 1fr)`,
+    columnGap: "calc(var(--espaco) * 2)",
+    alignContent: "start",
+  },
+  molduraEstreita: { width: LADO_MINIATURA, height: LADO_MINIATURA, gridRow: "1 / span 2" },
+  opcoesEstreitas: { gridTemplateColumns: "repeat(2, 1fr)" },
+  faixaEstreita: { bottom: 0 },
+  rodapeEstreito: { position: "static", flexWrap: "wrap", padding: "calc(var(--espaco) * 2) 0" },
+  quebraLinha: { flexWrap: "wrap" },
+  salvarEstreito: { minWidth: 0, flexGrow: 1 },
   confirmacaoFundo: {
     position: "fixed",
     inset: 0,
@@ -623,6 +643,7 @@ const R: Record<string, CSSProperties> = {
     margin: 0,
   },
   dd: { margin: 0, fontWeight: 600 },
+  folhaEstreita: { margin: "var(--espaco)", padding: "calc(var(--espaco) * 2)" },
   corpo: {
     display: "grid",
     gridTemplateColumns: "220px 1fr",

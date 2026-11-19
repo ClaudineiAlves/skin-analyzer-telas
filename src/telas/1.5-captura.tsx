@@ -3,7 +3,7 @@ import { Navigate, useNavigate } from "react-router-dom";
 import { TEMPOS } from "../config";
 import { buscarSaude, capturarLesao, observarQualidadeCaptura, type QualidadeCaptura } from "../mocks";
 import { useSessao } from "../sessao";
-import { Botao, MensagemProblema } from "../ui";
+import { Botao, MensagemProblema, useTelaEstreita } from "../ui";
 
 // Ainda não existe em CODIGOS (config.ts): ver relatório.
 const CODIGO_DESCONECTADO = "DERM-DESCONECTADO";
@@ -30,6 +30,7 @@ export default function Tela() {
   const [conectado, setConectado] = useState<boolean | null>(null);
   const [qualidade, setQualidade] = useState<QualidadeCaptura | null>(null);
   const [capturando, setCapturando] = useState(false);
+  const estreita = useTelaEstreita();
   const [lembrete, setLembrete] = useState(
     () => !!atendimento && lembreteHigienizacaoVistoPara !== atendimento.codigo,
   );
@@ -88,9 +89,9 @@ export default function Tela() {
   const desconectado = conectado === false;
 
   return (
-    <div style={S.tela}>
-      <div style={S.colunas}>
-        <section style={S.imagem} aria-label="Imagem ao vivo do dermatoscópio">
+    <div style={{ ...S.tela, ...(estreita ? S.telaEstreita : null) }}>
+      <div style={{ ...S.colunas, ...(estreita ? S.umaColuna : null) }}>
+        <section style={{ ...S.imagem, ...(estreita ? S.imagemEstreita : null) }} aria-label="Imagem ao vivo do dermatoscópio">
           {desconectado ? (
             <div style={S.problema}>
               <MensagemProblema
@@ -157,7 +158,7 @@ export default function Tela() {
         </aside>
       </div>
 
-      <footer style={S.rodape}>
+      <footer style={{ ...S.rodape, ...(estreita ? S.rodapeEstreito : null) }}>
         <Botao variante="secundario" onClick={() => navigate("/triagem/atendimento")}>
           Voltar
         </Botao>
@@ -174,6 +175,11 @@ const ALTURA_RODAPE = 88;
 const LADO_IMAGEM = 580;
 
 const S: Record<string, CSSProperties> = {
+  // Celular: imagem ocupa a largura e as colunas empilham.
+  telaEstreita: { paddingBottom: ALTURA_RODAPE * 2 },
+  umaColuna: { gridTemplateColumns: "minmax(0, 1fr)", gap: "calc(var(--espaco) * 2)" },
+  imagemEstreita: { width: "100%", height: "auto", aspectRatio: "1 / 1" },
+  rodapeEstreito: { flexWrap: "wrap", gap: "var(--espaco) calc(var(--espaco) * 2)", padding: "var(--espaco) calc(var(--espaco) * 2)" },
   tela: { maxWidth: 1232, margin: "0 auto", paddingBottom: ALTURA_RODAPE },
   colunas: {
     display: "grid",

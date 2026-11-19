@@ -2,7 +2,7 @@ import { useState, type CSSProperties } from "react";
 import { Navigate, useLocation, useNavigate } from "react-router-dom";
 import { CODIGO_SEM_AVISO_1_7 } from "../mocks";
 import { useSessao } from "../sessao";
-import { Botao, FaixaTriagem, MensagemProblema } from "../ui";
+import { Botao, FaixaTriagem, MensagemProblema, useTelaEstreita } from "../ui";
 
 // Texto literal do prompt da 1.10: única exceção à regra de vocabulário (explica a estimativa).
 const EXPLICACAO_PROBABILIDADE =
@@ -21,6 +21,7 @@ export default function Tela() {
   const { usuario, atendimento, resultado } = useSessao();
   // Valores ficam ocultos até o toque; cada linha abre e fecha sozinha.
   const [abertos, setAbertos] = useState<Set<string>>(() => new Set());
+  const estreita = useTelaEstreita();
 
   if (!usuario) return <Navigate to="/login" replace />;
   if (!resultado) return <Navigate to="/inicio" replace />;
@@ -62,8 +63,8 @@ export default function Tela() {
 
   return (
     <div style={S.tela}>
-      <header style={S.topo}>
-        <div style={S.cabecalho}>
+      <header style={{ ...S.topo, ...(estreita ? S.topoEstreito : null) }}>
+        <div style={{ ...S.cabecalho, ...(estreita ? S.cabecalhoEstreito : null) }}>
           <Botao variante="secundario" onClick={voltar} style={S.voltar}>
             ‹ Voltar
           </Botao>
@@ -90,7 +91,7 @@ export default function Tela() {
         </section>
       )}
 
-      <section style={S.cartao} aria-labelledby="titulo-classes">
+      <section style={{ ...S.cartao, ...(estreita ? S.cartaoEstreito : null) }} aria-labelledby="titulo-classes">
         <h2 id="titulo-classes" style={S.tituloSecao}>
           Distribuição entre as classes
         </h2>
@@ -105,9 +106,9 @@ export default function Tela() {
                   type="button"
                   aria-expanded={aberto}
                   onClick={() => alternar(c.rotulo)}
-                  style={S.linhaClasse}
+                  style={{ ...S.linhaClasse, ...(estreita ? S.linhaClasseEstreita : null) }}
                 >
-                  <span style={S.nomeClasse}>
+                  <span style={{ ...S.nomeClasse, ...(estreita ? S.nomeClasseEstreito : null) }}>
                     {c.nome}
                     <span style={S.rotuloTecnico}>{c.rotulo}</span>
                   </span>
@@ -124,7 +125,7 @@ export default function Tela() {
         </ul>
       </section>
 
-      <section style={S.cartao} aria-labelledby="titulo-probabilidade">
+      <section style={{ ...S.cartao, ...(estreita ? S.cartaoEstreito : null) }} aria-labelledby="titulo-probabilidade">
         <h2 id="titulo-probabilidade" style={S.tituloSecao}>
           Probabilidade calibrada de lesão maligna
         </h2>
@@ -148,15 +149,15 @@ export default function Tela() {
         </p>
       </section>
 
-      <section style={S.cartao} aria-label="Mapa de atenção">
+      <section style={{ ...S.cartao, ...(estreita ? S.cartaoEstreito : null) }} aria-label="Mapa de atenção">
         <p style={S.texto}>Mapa de atenção não disponível neste aparelho.</p>
       </section>
 
-      <section style={S.cartao} aria-labelledby="titulo-modelo">
+      <section style={{ ...S.cartao, ...(estreita ? S.cartaoEstreito : null) }} aria-labelledby="titulo-modelo">
         <h2 id="titulo-modelo" style={S.tituloSecao}>
           Sobre o modelo
         </h2>
-        <dl style={S.dados}>
+        <dl style={{ ...S.dados, ...(estreita ? S.dadosEstreitos : null) }}>
           <dt style={S.secundario}>Nome</dt>
           <dd style={S.dd}>{resultado.modelo}</dd>
           <dt style={S.secundario}>Versão</dt>
@@ -325,4 +326,15 @@ const S: Record<string, CSSProperties> = {
     margin: 0,
   },
   dd: { margin: 0, fontWeight: 600 },
+  // Celular: margem do topo acompanha o padding menor do conteúdo (estilos.css);
+  // na linha da classe, o nome ocupa a linha de cima e a barra + valor a de baixo.
+  topoEstreito: {
+    margin: "calc(var(--espaco) * -2) calc(var(--espaco) * -2) 0",
+    padding: "calc(var(--espaco) * 2)",
+  },
+  cabecalhoEstreito: { flexWrap: "wrap", gap: "var(--espaco) calc(var(--espaco) * 2)" },
+  cartaoEstreito: { padding: "calc(var(--espaco) * 2)" },
+  linhaClasseEstreita: { gridTemplateColumns: "minmax(0, 1fr) auto", gap: "var(--espaco) calc(var(--espaco) * 2)" },
+  nomeClasseEstreito: { gridColumn: "1 / -1", flexWrap: "wrap" },
+  dadosEstreitos: { gridTemplateColumns: "max-content minmax(0, 1fr)", columnGap: "calc(var(--espaco) * 2)", overflowWrap: "anywhere" },
 };

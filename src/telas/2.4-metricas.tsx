@@ -615,6 +615,7 @@ const S: Record<string, CSSProperties> = {
   },
   nav: {
     display: "flex",
+    flexWrap: "wrap",
     gap: "var(--espaco)",
     borderBottom: "1px solid var(--cor-borda)",
   },
@@ -662,12 +663,12 @@ const S: Record<string, CSSProperties> = {
   cardTitulo: { fontSize: 22, lineHeight: 1.3 },
   destaques: {
     display: "grid",
-    gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))",
+    gridTemplateColumns: "repeat(auto-fit, minmax(min(280px, 100%), 1fr))",
     gap: "calc(var(--espaco) * 2)",
   },
   grade: {
     display: "grid",
-    gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))",
+    gridTemplateColumns: "repeat(auto-fit, minmax(min(260px, 100%), 1fr))",
     gap: "calc(var(--espaco) * 2)",
   },
   bloco: { display: "grid", gap: "var(--espaco)", alignContent: "start" },

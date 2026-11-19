@@ -477,6 +477,7 @@ const S: Record<string, CSSProperties> = {
   tela: { display: "grid", gap: "calc(var(--espaco) * 2)" },
   nav: {
     display: "flex",
+    flexWrap: "wrap",
     gap: "var(--espaco)",
     borderBottom: "1px solid var(--cor-borda)",
   },
@@ -606,7 +607,7 @@ const S: Record<string, CSSProperties> = {
   },
   dados: {
     display: "grid",
-    gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))",
+    gridTemplateColumns: "repeat(auto-fit, minmax(min(200px, 100%), 1fr))",
     gap: "calc(var(--espaco) * 2)",
     margin: 0,
   },

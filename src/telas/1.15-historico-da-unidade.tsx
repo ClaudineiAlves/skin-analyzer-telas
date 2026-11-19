@@ -12,7 +12,7 @@ import {
   type TriagemUnidade1_15,
 } from "../mocks";
 import { useSessao } from "../sessao";
-import { BlocoConduta, Botao, Dialogo, FaixaTriagem, TecladoNumerico } from "../ui";
+import { BlocoConduta, Botao, Dialogo, FaixaTriagem, TecladoNumerico, useTelaEstreita } from "../ui";
 
 // Pendente de mover para config.ts (LIMITES); ver relatório da tela.
 const PERIODOS_DIAS = [7, 30] as const;
@@ -185,6 +185,7 @@ export default function Tela() {
   const [relatorio, setRelatorio] = useState(false);
   const [anulando, setAnulando] = useState<Anulando | null>(null);
   const [aviso, setAviso] = useState<string | null>(null);
+  const estreita = useTelaEstreita();
   const ativo = useRef(true);
 
   const carregar = () => buscarTriagensUnidade1_15().then((t) => ativo.current && setTriagens(t));
@@ -246,7 +247,7 @@ export default function Tela() {
   };
 
   const filtrosForm = (
-    <form style={S.filtros} aria-label="Filtros" onSubmit={(e) => e.preventDefault()}>
+    <form style={{ ...S.filtros, ...(estreita ? S.umaColuna : null) }} aria-label="Filtros" onSubmit={(e) => e.preventDefault()}>
       <Filtro
         rotulo="Período"
         valor={filtros.periodo}
@@ -382,7 +383,7 @@ export default function Tela() {
               </table>
             </section>
 
-            <div style={S.taxas}>
+            <div style={{ ...S.taxas, ...(estreita ? S.umaColuna : null) }}>
               <Taxa
                 titulo="Taxa de indeterminado"
                 a={r.indeterminadas}
@@ -616,7 +617,7 @@ export default function Tela() {
 // Estilos locais: estilos.css é compartilhado; ver relatório para migrar para classes.
 const S: Record<string, CSSProperties> = {
   tela: { display: "grid", gap: "calc(var(--espaco) * 3)", alignContent: "start", minWidth: 0 },
-  cabecalho: { display: "flex", justifyContent: "space-between", alignItems: "center", gap: "calc(var(--espaco) * 2)" },
+  cabecalho: { display: "flex", flexWrap: "wrap", justifyContent: "space-between", alignItems: "center", gap: "calc(var(--espaco) * 2)" },
   titulo: { fontSize: "var(--fonte-titulo)", lineHeight: 1.2 },
   secundario: { color: "var(--cor-secundario)", fontWeight: 400 },
   filtros: {
@@ -628,6 +629,8 @@ const S: Record<string, CSSProperties> = {
   campo: { display: "grid", gap: 4, minWidth: 0 },
   rotulo: { fontWeight: 600 },
   select: {
+    width: "100%",
+    minWidth: 0,
     minHeight: "var(--toque)",
     padding: "0 var(--espaco)",
     font: "inherit",
@@ -637,6 +640,7 @@ const S: Record<string, CSSProperties> = {
     borderRadius: "var(--raio)",
   },
   limpar: { justifySelf: "start" },
+  umaColuna: { gridTemplateColumns: "minmax(0, 1fr)" },
   aviso: {
     padding: "var(--espaco) calc(var(--espaco) * 2)",
     background: "var(--cor-branco)",
@@ -651,7 +655,8 @@ const S: Record<string, CSSProperties> = {
     background: "var(--cor-branco)",
     borderRadius: "var(--raio)",
   },
-  rolagem: { overflowX: "auto" },
+  // relative: segura os textos só-para-leitor (absolute) dentro da rolagem.
+  rolagem: { position: "relative", overflowX: "auto" },
   tabela: {
     width: "100%",
     borderCollapse: "collapse",
