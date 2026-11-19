@@ -240,7 +240,8 @@ const S: Record<string, CSSProperties> = {
     border: "1px solid var(--cor-borda)",
     borderRadius: "var(--raio)",
   },
-  rolagem: { overflowX: "auto" },
+  // relative: segura os textos só-para-leitor (absolute) dentro da rolagem.
+  rolagem: { position: "relative", overflowX: "auto" },
   tabela: {
     width: "100%",
     borderCollapse: "collapse",

@@ -238,3 +238,34 @@ h1, h2, h3, p { margin: 0; }
 .placeholder h1 { font-size: var(--fonte-titulo); }
 .placeholder__id { color: var(--cor-secundario); font-size: var(--fonte-pequena); }
 .placeholder__saidas { display: flex; flex-wrap: wrap; gap: var(--espaco); }
+
+/* ── Tela estreita (celular) ────────────────────────────────
+   Mesmo valor de LAYOUT.larguraEstreitaPx (config.ts). */
+@media (max-width: 760px) {
+  .aparelho__conteudo,
+  .painel__conteudo { padding: calc(var(--espaco) * 2); min-width: 0; }
+
+  .barra-status { flex-wrap: wrap; padding: var(--espaco) calc(var(--espaco) * 2); }
+  .barra-status__info { flex-wrap: wrap; gap: var(--espaco) calc(var(--espaco) * 2); }
+
+  /* Menu admin vira faixa horizontal rolável acima do conteúdo. */
+  .aparelho__admin { flex-direction: column; }
+  .menu-admin {
+    width: auto;
+    grid-auto-flow: column;
+    grid-auto-columns: max-content;
+    overflow-x: auto;
+    padding: var(--espaco);
+    border-right: 0;
+    border-bottom: 1px solid var(--cor-borda);
+  }
+  .menu-admin__item.active { border-left: 0; border-bottom: 4px solid var(--cor-laranja); }
+
+  .painel__barra { flex-wrap: wrap; gap: var(--espaco); padding: var(--espaco) calc(var(--espaco) * 2); }
+
+  .dialogo { margin: calc(var(--espaco) * 2); padding: calc(var(--espaco) * 3); }
+  .dialogo__acoes,
+  .mensagem-problema__acoes { flex-wrap: wrap; }
+  .mensagem-problema { padding: calc(var(--espaco) * 2); }
+  .progresso { max-width: 100%; }
+}

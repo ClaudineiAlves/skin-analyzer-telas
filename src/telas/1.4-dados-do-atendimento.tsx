@@ -10,7 +10,7 @@ import {
   codigoTemTriagemHoje,
 } from "../mocks";
 import { useSessao, type Atendimento } from "../sessao";
-import { Botao, Dialogo, TecladoNumerico } from "../ui";
+import { Botao, Dialogo, TecladoNumerico, useTelaEstreita } from "../ui";
 
 type Sexo = NonNullable<Atendimento["sexo"]>;
 type Vista = "frente" | "costas";
@@ -196,6 +196,7 @@ export default function Tela() {
   const [digitos, setDigitos] = useState("");
   const [verificando, setVerificando] = useState(false);
   const [jaUsado, setJaUsado] = useState(false);
+  const estreita = useTelaEstreita();
 
   // Só na montagem: o código sugerido não deve sobrescrever uma edição.
   useEffect(() => {
@@ -239,10 +240,10 @@ export default function Tela() {
   const podeContinuar = !!codigo && !!local && !verificando;
 
   return (
-    <div style={S.tela}>
+    <div style={{ ...S.tela, ...(estreita ? S.telaEstreita : null) }}>
       <h1 style={S.titulo}>Novo atendimento</h1>
 
-      <div style={{ ...S.colunas, ...(usaMetadata ? null : S.colunasSemMetadata) }}>
+      <div style={{ ...S.colunas, ...(usaMetadata ? null : S.colunasSemMetadata), ...(estreita ? S.umaColuna : null) }}>
         <div style={S.coluna}>
           <section style={S.secao} aria-labelledby="titulo-codigo">
             <h2 id="titulo-codigo" style={S.rotulo}>
@@ -266,7 +267,7 @@ export default function Tela() {
                   Idade
                   {faixaEscolhida && <span style={S.escolha}> · {faixaEscolhida.longo}</span>}
                 </h2>
-                <div style={S.gradeIdade}>
+                <div style={{ ...S.gradeIdade, ...(estreita ? S.gradeIdadeEstreita : null) }}>
                   {FAIXAS.map((f) => (
                     <button
                       key={f.id}
@@ -305,7 +306,7 @@ export default function Tela() {
         </div>
 
         <section style={S.secaoLocal} aria-labelledby="titulo-local">
-          <div style={S.cabecalhoLocal}>
+          <div style={{ ...S.cabecalhoLocal, ...(estreita ? S.quebraLinha : null) }}>
             <h2 id="titulo-local" style={S.tituloLocal}>
               Onde está a lesão?
             </h2>
@@ -324,7 +325,7 @@ export default function Tela() {
             </div>
           </div>
 
-          <div style={S.areaBoneco}>
+          <div style={{ ...S.areaBoneco, ...(estreita ? S.quebraLinha : null) }}>
             <Boneco vista={vista} local={local} escolher={setLocal} />
             <div style={S.infoLocal}>
               <p style={S.selecionado} aria-live="polite">
@@ -340,11 +341,11 @@ export default function Tela() {
         </section>
       </div>
 
-      <footer style={S.rodape}>
+      <footer style={{ ...S.rodape, ...(estreita ? S.rodapeEstreito : null) }}>
         <Botao variante="secundario" onClick={() => navigate("/inicio")}>
           Voltar
         </Botao>
-        <div style={S.rodapeDireita}>
+        <div style={{ ...S.rodapeDireita, ...(estreita ? S.rodapeDireitaEstreita : null) }}>
           {!local && (
             <p id="aviso-local" style={S.aviso}>
               Toque no local da lesão.
@@ -354,7 +355,7 @@ export default function Tela() {
             onClick={continuar}
             disabled={!podeContinuar}
             aria-describedby={local ? undefined : "aviso-local"}
-            style={S.continuar}
+            style={{ ...S.continuar, ...(estreita ? S.continuarEstreito : null) }}
           >
             Continuar
           </Botao>
@@ -421,6 +422,8 @@ const S: Record<string, CSSProperties> = {
     gap: "calc(var(--espaco) * 3)",
     paddingBottom: ALTURA_RODAPE,
   },
+  // No celular o rodapé fixo pode ocupar duas linhas.
+  telaEstreita: { paddingBottom: ALTURA_RODAPE * 2 },
   titulo: { fontSize: "var(--fonte-titulo)", lineHeight: 1.2 },
   colunas: {
     display: "grid",
@@ -429,11 +432,14 @@ const S: Record<string, CSSProperties> = {
     alignItems: "start",
   },
   colunasSemMetadata: { gridTemplateColumns: "360px 1fr" },
+  umaColuna: { gridTemplateColumns: "minmax(0, 1fr)" },
+  gradeIdadeEstreita: { gridTemplateColumns: "repeat(3, minmax(0, 1fr))" },
+  quebraLinha: { flexWrap: "wrap" },
   coluna: { display: "grid", gap: "calc(var(--espaco) * 3)" },
   secao: { display: "grid", gap: "var(--espaco)" },
   rotulo: { fontSize: 20, lineHeight: 1.3 },
   escolha: { fontWeight: 400, color: "var(--cor-secundario)" },
-  linhaCodigo: { display: "flex", alignItems: "center", gap: "calc(var(--espaco) * 2)" },
+  linhaCodigo: { display: "flex", flexWrap: "wrap", alignItems: "center", gap: "calc(var(--espaco) * 2)" },
   codigo: {
     fontSize: "var(--fonte-titulo)",
     fontWeight: 700,
@@ -443,7 +449,7 @@ const S: Record<string, CSSProperties> = {
   },
   secundario: { color: "var(--cor-secundario)" },
   gradeIdade: { display: "grid", gridTemplateColumns: "repeat(6, 1fr)", gap: "var(--espaco)" },
-  gradeSexo: { display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: "var(--espaco)" },
+  gradeSexo: { display: "grid", gridTemplateColumns: "repeat(3, minmax(0, 1fr))", gap: "var(--espaco)" },
   opcao: {
     minHeight: "var(--toque)",
     padding: "0 var(--espaco)",
@@ -489,4 +495,7 @@ const S: Record<string, CSSProperties> = {
   rodapeDireita: { display: "flex", alignItems: "center", gap: "calc(var(--espaco) * 3)" },
   aviso: { color: "var(--cor-laranja-700)", fontWeight: 600 },
   continuar: { minWidth: 240, minHeight: 56, fontSize: 22 },
+  rodapeEstreito: { flexWrap: "wrap", padding: "var(--espaco) calc(var(--espaco) * 2)" },
+  rodapeDireitaEstreita: { flex: 1, flexWrap: "wrap", justifyContent: "flex-end", gap: "var(--espaco)" },
+  continuarEstreito: { minWidth: 0 },
 };

@@ -17,7 +17,7 @@ import {
   type TipoRede1_17,
 } from "../mocks";
 import { useSessao } from "../sessao";
-import { Botao, Dialogo, TecladoNumerico } from "../ui";
+import { Botao, Dialogo, TecladoNumerico, useTelaEstreita } from "../ui";
 
 const dois = (n: number) => String(n).padStart(2, "0");
 
@@ -94,12 +94,13 @@ function Grupo({ titulo, children }: { titulo: string; children: ReactNode }) {
 }
 
 function Linhas({ linhas }: { linhas: [string, ReactNode][] }) {
+  const estreita = useTelaEstreita();
   return (
     <dl style={S.linhas}>
       {linhas.map(([rotulo, valor]) => (
-        <div key={rotulo} style={S.linha}>
+        <div key={rotulo} style={{ ...S.linha, ...(estreita ? S.quebraLinha : null) }}>
           <dt style={S.rotulo}>{rotulo}</dt>
-          <dd style={S.valor}>{valor}</dd>
+          <dd style={{ ...S.valor, ...(estreita ? S.valorEstreito : null) }}>{valor}</dd>
         </div>
       ))}
     </dl>
@@ -198,6 +199,7 @@ export default function Tela() {
   const [salvando, setSalvando] = useState(false);
   const [confirmado, setConfirmado] = useState(false);
   const [ajusteHora, setAjusteHora] = useState<string | null>(null); // dígitos digitados
+  const estreita = useTelaEstreita();
   const ativo = useRef(true);
 
   useEffect(() => {
@@ -264,7 +266,7 @@ export default function Tela() {
     <div style={S.tela}>
       <h1 style={S.titulo}>Configurações</h1>
 
-      <div style={S.colunas}>
+      <div style={{ ...S.colunas, ...(estreita ? S.umaColuna : null) }}>
         <Grupo titulo="Rede">
           <Linhas
             linhas={[
@@ -495,6 +497,10 @@ const S: Record<string, CSSProperties> = {
   titulo: { fontSize: "var(--fonte-titulo)", lineHeight: 1.2 },
   secundario: { color: "var(--cor-secundario)" },
   colunas: { columnCount: 2, columnGap: "calc(var(--espaco) * 2)" },
+  // Celular: uma coluna; rótulo e valor podem quebrar linha (nome de rede longo).
+  umaColuna: { columnCount: 1 },
+  quebraLinha: { flexWrap: "wrap" },
+  valorEstreito: { minWidth: 0, overflowWrap: "anywhere" },
   grupo: {
     breakInside: "avoid",
     display: "grid",
@@ -550,6 +556,7 @@ const S: Record<string, CSSProperties> = {
   interruptor: {
     minHeight: "var(--toque)",
     display: "flex",
+    flexWrap: "wrap",
     alignItems: "center",
     justifyContent: "space-between",
     gap: "calc(var(--espaco) * 2)",

@@ -220,7 +220,7 @@ const S: Record<string, CSSProperties> = {
   },
   opcoes: {
     display: "grid",
-    gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))",
+    gridTemplateColumns: "repeat(auto-fit, minmax(min(300px, 100%), 1fr))",
     gap: "var(--espaco)",
   },
   opcao: {
@@ -244,9 +244,10 @@ const S: Record<string, CSSProperties> = {
   },
   marca: { fontSize: 22, lineHeight: 1, color: "var(--cor-secundario)" },
   marcaMarcada: { color: "var(--cor-laranja-700)" },
+  // Duas colunas no aparelho; uma só no celular.
   duasColunas: {
     display: "grid",
-    gridTemplateColumns: "1fr 1fr",
+    gridTemplateColumns: "repeat(auto-fit, minmax(min(240px, 100%), 1fr))",
     gap: "calc(var(--espaco) * 2)",
   },
   linhaCodigo: {
@@ -271,12 +272,13 @@ const S: Record<string, CSSProperties> = {
   },
   rodape: {
     display: "flex",
+    flexWrap: "wrap",
     alignItems: "center",
     justifyContent: "space-between",
     gap: "calc(var(--espaco) * 2)",
   },
   pequeno: { fontSize: "var(--fonte-pequena)", color: "var(--cor-secundario)" },
-  acoes: { display: "flex", gap: "var(--espaco)" },
+  acoes: { display: "flex", flexWrap: "wrap", gap: "var(--espaco)" },
   centro: { minHeight: "60vh", display: "grid", placeItems: "center" },
   confirmacao: { fontSize: "var(--fonte-titulo)", fontWeight: 700 },
 };

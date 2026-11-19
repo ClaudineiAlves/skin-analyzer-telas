@@ -3,7 +3,7 @@ import { Navigate, useNavigate } from "react-router-dom";
 import { AVISO_TRIAGEM } from "../dominio";
 import { buscarPendentesSync, buscarSaude, buscarTriagensDeHoje, type Triagem } from "../mocks";
 import { useSessao } from "../sessao";
-import { BlocoConduta, Botao, FaixaTriagem } from "../ui";
+import { BlocoConduta, Botao, FaixaTriagem, useTelaEstreita } from "../ui";
 
 // Pendentes de mover para config.ts (TEMPOS/LIMITES); ver relatório da tela.
 const HORA_FIM_MANHA = 12;
@@ -41,6 +41,8 @@ export default function Tela() {
     };
   }, [usuario]);
 
+  const estreita = useTelaEstreita();
+
   if (!usuario) return <Navigate to="/login" replace />;
 
   const novaTriagem = () => {
@@ -62,7 +64,7 @@ export default function Tela() {
           onClick={novaTriagem}
           disabled={!podeIniciar}
           aria-describedby={dermatoscopio === false ? "aviso-dermatoscopio" : undefined}
-          style={{ ...S.novaTriagem, ...(podeIniciar ? null : S.novaTriagemCinza) }}
+          style={{ ...S.novaTriagem, ...(estreita ? S.larguraTotal : null), ...(podeIniciar ? null : S.novaTriagemCinza) }}
         >
           + Nova triagem
         </Botao>
@@ -107,7 +109,7 @@ export default function Tela() {
           <ul style={S.lista}>
             {triagens.map((t) => (
               <li key={t.id}>
-                <button type="button" style={S.item} onClick={() => navigate(`/historico/${t.id}`)}>
+                <button type="button" style={{ ...S.item, ...(estreita ? S.itemEstreito : null) }} onClick={() => navigate(`/historico/${t.id}`)}>
                   <span style={S.hora}>{hhmm(t.data)}</span>
                   <span style={S.codigo}>{t.codigo}</span>
                   {t.resultado ? (
@@ -181,6 +183,8 @@ const S: Record<string, CSSProperties> = {
     textAlign: "left",
     cursor: "pointer",
   },
+  itemEstreito: { gridTemplateColumns: "auto auto minmax(0, 1fr) auto", gap: "var(--espaco)" },
+  larguraTotal: { width: "100%" },
   hora: { fontVariantNumeric: "tabular-nums" },
   codigo: { fontWeight: 700 },
   seta: { color: "var(--cor-secundario)", fontSize: 24 },

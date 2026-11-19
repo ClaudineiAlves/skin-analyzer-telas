@@ -220,7 +220,7 @@ const S: Record<string, CSSProperties> = {
   semOperadores: { color: "var(--cor-laranja-700)", fontWeight: 600 },
   grade: {
     display: "grid",
-    gridTemplateColumns: "repeat(auto-fill, minmax(240px, 1fr))",
+    gridTemplateColumns: "repeat(auto-fill, minmax(min(240px, 100%), 1fr))",
     gap: "calc(var(--espaco) * 2)",
     width: "100%",
     maxWidth: 1040,

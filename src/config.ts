@@ -24,3 +24,8 @@ export const CODIGOS = {
   MOD_FUMACA: "MOD-FUMACA",
   API_TIMEOUT: "API-TIMEOUT",
 } as const;
+
+// Abaixo desta largura (celular), as telas trocam colunas lado a lado por uma coluna só.
+export const LAYOUT = {
+  larguraEstreitaPx: 760,
+} as const;

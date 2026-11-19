@@ -212,7 +212,7 @@ const S: Record<string, CSSProperties> = {
     margin: 0,
     padding: 0,
     display: "grid",
-    gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))",
+    gridTemplateColumns: "repeat(auto-fill, minmax(min(280px, 100%), 1fr))",
     gap: "calc(var(--espaco) * 2)",
   },
   item: { display: "flex" },

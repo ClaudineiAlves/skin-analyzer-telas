@@ -27,6 +27,7 @@ import {
   FaixaTriagem,
   MensagemProblema,
   TecladoNumerico,
+  useTelaEstreita,
 } from "../ui";
 
 // Pendente de mover para config.ts (LIMITES); ver relatório da tela.
@@ -88,6 +89,7 @@ export default function Tela() {
   const [triagens, setTriagens] = useState<TriagemOperador1_11[] | null>(null);
   const [digitando, setDigitando] = useState<string | null>(null); // null = teclado fechado
   const [exportou, setExportou] = useState(false);
+  const estreita = useTelaEstreita();
 
   // Período e busca ficam na URL para sobreviver à ida ao detalhe e à 1.10.
   const p = params.get("periodo");
@@ -204,7 +206,7 @@ export default function Tela() {
 
   return (
     <div style={S.telaLista}>
-      <div style={S.cabecalho}>
+      <div style={{ ...S.cabecalho, ...(estreita ? S.quebraLinha : null) }}>
         <h1 style={S.titulo}>Meu histórico</h1>
         <Botao variante="secundario" onClick={() => navigate("/inicio")}>
           ‹ Voltar
@@ -212,7 +214,7 @@ export default function Tela() {
       </div>
 
       <div style={S.filtros}>
-        <div role="group" aria-label="Período" style={S.periodos}>
+        <div role="group" aria-label="Período" style={{ ...S.periodos, ...(estreita ? S.larguraTotal : null) }}>
           {PERIODOS.map((x) => {
             const marcado = periodo === x.id;
             return (
@@ -221,7 +223,7 @@ export default function Tela() {
                 type="button"
                 aria-pressed={marcado}
                 onClick={() => mudarFiltros({ periodo: x.id })}
-                style={{ ...S.opcao, ...(marcado ? S.opcaoMarcada : null) }}
+                style={{ ...S.opcao, ...(estreita ? S.opcaoEstreita : null), ...(marcado ? S.opcaoMarcada : null) }}
               >
                 {x.rotulo}
               </button>
@@ -229,10 +231,10 @@ export default function Tela() {
           })}
         </div>
 
-        <div style={S.busca}>
+        <div style={{ ...S.busca, ...(estreita ? { ...S.larguraTotal, ...S.quebraLinha } : null) }}>
           <button
             type="button"
-            style={S.campoBusca}
+            style={{ ...S.campoBusca, ...(estreita ? S.opcaoEstreita : null) }}
             onClick={abrirTeclado}
             aria-label="Buscar código"
           >
@@ -293,7 +295,7 @@ export default function Tela() {
                   <li key={t.id}>
                     <button
                       type="button"
-                      style={S.item}
+                      style={{ ...S.item, ...(estreita ? S.itemEstreito : null) }}
                       onClick={() => navigate(`/historico/${t.id}${search}`)}
                     >
                       <span style={S.hora}>{hhmm(t.data)}</span>
@@ -379,12 +381,13 @@ function Detalhe({
 }) {
   const r = t.resultado;
   const indeterminado = r?.conduta === "indeterminado";
+  const estreita = useTelaEstreita();
 
   return (
-    <div style={S.tela}>
-      <div style={S.colunas}>
-        <section style={S.esquerda} aria-label="Imagem analisada">
-          <div style={S.moldura}>
+    <div style={{ ...S.tela, ...(estreita ? S.telaEstreita : null) }}>
+      <div style={{ ...S.colunas, ...(estreita ? S.umaColuna : null) }}>
+        <section style={{ ...S.esquerda, ...(estreita ? S.esquerdaEstreita : null) }} aria-label="Imagem analisada">
+          <div style={{ ...S.moldura, ...(estreita ? S.molduraEstreita : null) }}>
             {t.imagem_url ? (
               <img
                 src={t.imagem_url}
@@ -464,7 +467,7 @@ function Detalhe({
       </div>
 
       {r && (
-        <div style={S.faixa}>
+        <div style={{ ...S.faixa, ...(estreita ? S.faixaEstreita : null) }}>
           <FaixaTriagem aviso={r.aviso} />
         </div>
       )}
@@ -482,7 +485,7 @@ function Detalhe({
         </section>
       )}
 
-      <footer style={S.rodape}>
+      <footer style={{ ...S.rodape, ...(estreita ? S.rodapeEstreito : null) }}>
         <Botao variante="secundario" onClick={voltar} style={S.botaoRodape}>
           ‹ Voltar ao histórico
         </Botao>
@@ -491,7 +494,7 @@ function Detalhe({
             {EXPORTAR_INDISPONIVEL}
           </p>
         )}
-        <div style={S.rodapeGrupo}>
+        <div style={{ ...S.rodapeGrupo, ...S.quebraLinha }}>
           <Botao variante="secundario" onClick={exportar} style={S.botaoRodape}>
             Exportar
           </Botao>
@@ -509,6 +512,7 @@ function Detalhe({
 // Estilos locais, no mesmo padrão da 1.3 e da 1.8 (estilos.css é compartilhado).
 const ALTURA_RODAPE = 88;
 const LADO_IMAGEM = 300;
+const LADO_MINIATURA = 96;
 
 const S: Record<string, CSSProperties> = {
   // Lista
@@ -741,6 +745,23 @@ const S: Record<string, CSSProperties> = {
     gap: "calc(var(--espaco) * 2)",
   },
   botaoRodape: { minHeight: 56 },
+  // Celular: filtros ocupam a largura; o item da lista quebra em linhas; no detalhe as
+  // colunas empilham e o rodapé sai do fixo para a faixa de triagem ficar sempre visível.
+  quebraLinha: { flexWrap: "wrap" },
+  larguraTotal: { width: "100%" },
+  opcaoEstreita: { flex: 1, minWidth: 0 },
+  itemEstreito: { display: "flex", flexWrap: "wrap", columnGap: "calc(var(--espaco) * 2)", rowGap: 4 },
+  telaEstreita: { paddingBottom: 0 },
+  umaColuna: { gridTemplateColumns: "minmax(0, 1fr)", gap: "calc(var(--espaco) * 2)" },
+  // Imagem vira miniatura ao lado do local, para a conduta caber acima da faixa.
+  esquerdaEstreita: {
+    gridTemplateColumns: `${LADO_MINIATURA}px minmax(0, 1fr)`,
+    columnGap: "calc(var(--espaco) * 2)",
+    alignContent: "start",
+  },
+  molduraEstreita: { width: LADO_MINIATURA, height: LADO_MINIATURA, gridRow: "1 / span 2" },
+  faixaEstreita: { bottom: 0 },
+  rodapeEstreito: { position: "static", flexWrap: "wrap", padding: "calc(var(--espaco) * 2) 0" },
   avisoExportar: {
     flex: 1,
     textAlign: "center",
